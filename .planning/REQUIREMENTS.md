@@ -93,52 +93,52 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PART-01 | Unmapped | Pending |
-| PART-02 | Unmapped | Pending |
-| PART-03 | Unmapped | Pending |
-| PART-04 | Unmapped | Pending |
-| REPO-01 | Unmapped | Pending |
-| REPO-02 | Unmapped | Pending |
-| REPO-03 | Unmapped | Pending |
-| REPO-04 | Unmapped | Pending |
-| JIRA-01 | Unmapped | Pending |
-| JIRA-02 | Unmapped | Pending |
-| JIRA-03 | Unmapped | Pending |
-| JIRA-04 | Unmapped | Pending |
-| JIRA-05 | Unmapped | Pending |
-| JIRA-06 | Unmapped | Pending |
-| CONF-01 | Unmapped | Pending |
-| CONF-02 | Unmapped | Pending |
-| CONF-03 | Unmapped | Pending |
-| CONF-04 | Unmapped | Pending |
-| CONF-05 | Unmapped | Pending |
-| CONF-06 | Unmapped | Pending |
-| PLAN-01 | Unmapped | Pending |
-| PLAN-02 | Unmapped | Pending |
-| PLAN-03 | Unmapped | Pending |
-| PLAN-04 | Unmapped | Pending |
-| PLAN-05 | Unmapped | Pending |
-| PLAN-06 | Unmapped | Pending |
-| GEN-01 | Unmapped | Pending |
-| GEN-02 | Unmapped | Pending |
-| GEN-03 | Unmapped | Pending |
-| GEN-04 | Unmapped | Pending |
-| GEN-05 | Unmapped | Pending |
-| GEN-06 | Unmapped | Pending |
-| RUN-01 | Unmapped | Pending |
-| RUN-02 | Unmapped | Pending |
-| RUN-03 | Unmapped | Pending |
-| RUN-04 | Unmapped | Pending |
-| RUN-05 | Unmapped | Pending |
-| SECU-01 | Unmapped | Pending |
-| SECU-02 | Unmapped | Pending |
-| SECU-03 | Unmapped | Pending |
-| SECU-04 | Unmapped | Pending |
+| PART-01 | Phase 1 | Pending |
+| PART-02 | Phase 1 | Pending |
+| PART-03 | Phase 1 | Pending |
+| PART-04 | Phase 1 | Pending |
+| REPO-01 | Phase 2 | Pending |
+| REPO-02 | Phase 2 | Pending |
+| REPO-03 | Phase 2 | Pending |
+| REPO-04 | Phase 2 | Pending |
+| JIRA-01 | Phase 2 | Pending |
+| JIRA-02 | Phase 2 | Pending |
+| JIRA-03 | Phase 2 | Pending |
+| JIRA-04 | Phase 2 | Pending |
+| JIRA-05 | Phase 2 | Pending |
+| JIRA-06 | Phase 2 | Pending |
+| CONF-01 | Phase 2 | Pending |
+| CONF-02 | Phase 2 | Pending |
+| CONF-03 | Phase 2 | Pending |
+| CONF-04 | Phase 2 | Pending |
+| CONF-05 | Phase 2 | Pending |
+| CONF-06 | Phase 2 | Pending |
+| PLAN-01 | Phase 3 | Pending |
+| PLAN-02 | Phase 3 | Pending |
+| PLAN-03 | Phase 3 | Pending |
+| PLAN-04 | Phase 3 | Pending |
+| PLAN-05 | Phase 3 | Pending |
+| PLAN-06 | Phase 3 | Pending |
+| GEN-01 | Phase 4 | Pending |
+| GEN-02 | Phase 4 | Pending |
+| GEN-03 | Phase 4 | Pending |
+| GEN-04 | Phase 4 | Pending |
+| GEN-05 | Phase 4 | Pending |
+| GEN-06 | Phase 4 | Pending |
+| RUN-01 | Phase 5 | Pending |
+| RUN-02 | Phase 5 | Pending |
+| RUN-03 | Phase 5 | Pending |
+| RUN-04 | Phase 3 | Pending |
+| RUN-05 | Phase 3 | Pending |
+| SECU-01 | Phase 6 | Pending |
+| SECU-02 | Phase 6 | Pending |
+| SECU-03 | Phase 5 | Pending |
+| SECU-04 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 42 total
-- Mapped to phases: 0
-- Unmapped: 42 ⚠️
+- Mapped to phases: 42
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-30*
