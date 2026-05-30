@@ -97,9 +97,9 @@ export function detectPatternClassification(input: PatternDetectionInput): Patte
   const unknownScore = pomScore === 0 && screenplayScore === 0 ? 1 : clamp01(1 - Math.max(pomScore, screenplayScore));
 
   const ranking: PatternScore[] = [
-    { pattern: 'pom', score: pomScore },
-    { pattern: 'screenplay', score: screenplayScore },
-    { pattern: 'hybrid', score: hybridScore }
+    { pattern: 'pom' as RepoPattern, score: pomScore },
+    { pattern: 'screenplay' as RepoPattern, score: screenplayScore },
+    { pattern: 'hybrid' as RepoPattern, score: hybridScore }
   ].sort((a, b) => b.score - a.score);
 
   let primaryPattern: RepoPattern;
