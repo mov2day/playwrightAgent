@@ -27,8 +27,8 @@
 - [x] **JIRA-04**: For sub-task tickets, agent fetches full sub-task details, all comments, attachments, linked Jira issues, linked Confluence pages, and full parent task details.
 - [x] **JIRA-05**: For any ticket type, agent traverses linked Jira issues and Confluence pages from the ticket graph and includes their full details.
 - [x] **JIRA-06**: For any ticket type, agent always fetches linked epic details when an epic relationship exists.
-- [ ] **CONF-01**: Agent generates Confluence queries from Jira context and fetches candidate pages via local tooling.
-- [ ] **CONF-02**: Agent excludes low-relevance Confluence results from final planning context.
+- [x] **CONF-01**: Agent generates Confluence queries from Jira context and fetches candidate pages via local tooling.
+- [x] **CONF-02**: Agent excludes low-relevance Confluence results from final planning context.
 
 ### Confidence Scoring and Gate Policy
 
@@ -107,8 +107,8 @@
 | JIRA-04 | Phase 2 | Complete |
 | JIRA-05 | Phase 2 | Complete |
 | JIRA-06 | Phase 2 | Complete |
-| CONF-01 | Phase 2 | Pending |
-| CONF-02 | Phase 2 | Pending |
+| CONF-01 | Phase 2 | Complete |
+| CONF-02 | Phase 2 | Complete |
 | CONF-03 | Phase 2 | Pending |
 | CONF-04 | Phase 2 | Pending |
 | CONF-05 | Phase 2 | Pending |
