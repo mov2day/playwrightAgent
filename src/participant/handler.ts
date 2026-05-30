@@ -13,6 +13,10 @@ import {
   type ConfidenceExplainability
 } from '../pipeline/confidence/explainability';
 import type { PlanMode } from '../pipeline/contracts';
+import type { PlanReviewBundle, ScenarioPlanRecord } from '../pipeline/planning/planContracts';
+import { buildPlanReviewBundle } from '../pipeline/planning/scenarioGrouping';
+import { buildScenarioPlan, type RequirementScenarioInput } from '../pipeline/planning/scenarioMapper';
+import { formatPlanChatSummary } from '../pipeline/planning/planSummary';
 import type { PipelineOrchestrator } from '../pipeline/orchestrator';
 import type { PipelineState } from '../pipeline/stateMachine';
 import { parseSlashPlanInput } from './slashPlanParser';
@@ -25,6 +29,15 @@ const CONFIDENCE_GATE_ACTIONS: Record<ConfidenceGate, readonly QuickAction[]> = 
 };
 
 type FreeTextPurpose = 'additional_context_or_instruction';
+type FreeTextCommentTarget = 'scenario' | 'global';
+type FreeTextCommentClassification = 'clarification' | 'constraint' | 'bug' | 'new_context';
+
+interface ClassifiedFreeTextComment {
+  target: 'scenario' | 'global';
+  classification: 'clarification' | 'constraint' | 'bug' | 'new_context';
+  scenarioId?: string;
+  text: string;
+}
 
 interface RequestSnapshot {
   requestId: string;
@@ -45,6 +58,14 @@ export interface ConfidenceInputFactoryArgs {
   freeTextContext: string[];
 }
 
+export interface PlanBundleFactoryArgs {
+  requestId: string;
+  mode: PlanMode;
+  ticketId?: string;
+  userContext?: string;
+  warnings: string[];
+}
+
 export interface PlanCommandResponse {
   requestId: string;
   mode: PlanMode;
@@ -60,6 +81,8 @@ export interface PlanCommandResponse {
   acceptsFreeText: boolean;
   freeTextPurpose: FreeTextPurpose;
   explainability: ConfidenceExplainability;
+  planSummary?: string;
+  planScenarios?: readonly ScenarioPlanRecord[];
 }
 
 export interface ParticipantHandlerDeps {
@@ -69,6 +92,7 @@ export interface ParticipantHandlerDeps {
   orchestrator?: PipelineOrchestrator;
   confidenceProfile?: ConfidenceWeightProfile;
   confidenceInputFactory?: (args: ConfidenceInputFactoryArgs) => ConfidenceDecisionInput;
+  planBundleFactory?: (args: PlanBundleFactoryArgs) => PlanReviewBundle | undefined;
 }
 
 function emitEvent(
@@ -128,6 +152,107 @@ function joinUserContext(parts: string[]): string | undefined {
     .join('\n');
 
   return merged ? merged : undefined;
+}
+
+function pickFunctionality(sentence: string): string {
+  const tokens = sentence
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4);
+
+  return tokens[0]
+    ? `${tokens[0][0]?.toUpperCase() ?? ''}${tokens[0].slice(1)}`
+    : 'General';
+}
+
+function splitScenarioSentences(userContext: string | undefined): string[] {
+  if (!userContext?.trim()) {
+    return [];
+  }
+
+  return userContext
+    .split(/[\n.!?]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
+function toScenarioInputs(args: PlanBundleFactoryArgs): RequirementScenarioInput[] {
+  const seedSentences = splitScenarioSentences(args.userContext);
+  const baseScope = args.mode === 'ticket' ? 'Ticket-driven functional validation' : 'No-ticket exploratory validation';
+  const requirementPrefix = args.ticketId?.toUpperCase() ?? 'PLAN-MANUAL';
+
+  if (seedSentences.length === 0) {
+    return [
+      {
+        requirementId: requirementPrefix,
+        acceptanceCriteriaIds: ['AC-1'],
+        scenarioName: args.mode === 'ticket'
+          ? `Validate ${requirementPrefix} acceptance flow`
+          : 'Validate supplied manual scope',
+        scope: baseScope,
+        assertionIntentSummary: args.mode === 'ticket'
+          ? 'Confirm acceptance criteria and essential guardrails for the provided ticket.'
+          : 'Confirm manual requirements and acceptance criteria supplied in chat context.',
+        functionality: 'General',
+        riskLevel: 'medium',
+        riskReason: 'Planning details are inferred and should be reviewed before generation.',
+        sourceEvidenceIds: args.ticketId ? [args.ticketId] : ['chat_context']
+      }
+    ];
+  }
+
+  return seedSentences.map((sentence, index) => {
+    const requirementId = `${requirementPrefix}-${index + 1}`;
+
+    return {
+      requirementId,
+      acceptanceCriteriaIds: [`AC-${index + 1}`],
+      scenarioName: `Scenario ${index + 1}: ${sentence.slice(0, 64)}`,
+      scope: baseScope,
+      assertionIntentSummary: sentence,
+      functionality: pickFunctionality(sentence),
+      riskLevel: index === 0 ? 'medium' : 'low',
+      riskReason: index === 0
+        ? 'Primary scenario anchors confidence and should be explicitly reviewed.'
+        : 'Derived scenario from user context; lower risk but still reviewable.',
+      sourceEvidenceIds: [`ctx_${index + 1}`]
+    };
+  });
+}
+
+function defaultPlanBundleFactory(args: PlanBundleFactoryArgs): PlanReviewBundle | undefined {
+  const inputs = toScenarioInputs(args);
+  const records = buildScenarioPlan(inputs);
+  if (records.length === 0) {
+    return undefined;
+  }
+
+  return buildPlanReviewBundle(records);
+}
+
+function classifyFreeTextComment(text: string): ClassifiedFreeTextComment {
+  const normalized = text.trim();
+  const scenarioIdMatch = normalized.match(/\b(scn_[a-z0-9_]+)\b/i);
+  const scenarioId = scenarioIdMatch?.[1]?.toLowerCase();
+  let classification: FreeTextCommentClassification = 'clarification';
+
+  if (/(?:\bmust\b|\bconstraint\b|\blimit\b|\bcannot\b|\bshould not\b)/i.test(normalized)) {
+    classification = 'constraint';
+  } else if (/(?:\bbug\b|\bfail(?:ing|ed)?\b|\berror\b|\bbroken\b|\bflaky\b)/i.test(normalized)) {
+    classification = 'bug';
+  } else if (/(?:\bnew\b|\badd\b|\balso\b|\binclude\b|\banother\b)/i.test(normalized)) {
+    classification = 'new_context';
+  }
+
+  const target: FreeTextCommentTarget = scenarioId ? 'scenario' : 'global';
+
+  return {
+    target,
+    classification,
+    scenarioId,
+    text: normalized
+  };
 }
 
 function toMessage(mode: PlanMode, gate: ConfidenceGate): string {
@@ -192,8 +317,11 @@ function buildResponse(
   warnings: string[],
   state: PipelineState | undefined,
   decision: ReturnType<typeof computeConfidenceDecision>,
-  explainability: ConfidenceExplainability
+  explainability: ConfidenceExplainability,
+  planBundle: PlanReviewBundle | undefined
 ): PlanCommandResponse {
+  const planSummary = planBundle ? formatPlanChatSummary(planBundle) : undefined;
+
   return {
     requestId,
     mode,
@@ -208,13 +336,16 @@ function buildResponse(
     confidenceProfileId: decision.profileId,
     acceptsFreeText: decision.gate === 'approval_required',
     freeTextPurpose: 'additional_context_or_instruction',
-    explainability
+    explainability,
+    planSummary,
+    planScenarios: planBundle?.flatScenarios
   };
 }
 
 export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps = {}): PlanCommandResponse {
   const eventSink = deps.eventSink ?? new InMemoryEventSink();
   const now = deps.now ?? (() => new Date());
+  const planBundleFactory = deps.planBundleFactory ?? defaultPlanBundleFactory;
 
   const parseResult = parseSlashPlanInput(rawInput);
   const requestContext = buildRequestContext(parseResult, {
@@ -237,6 +368,7 @@ export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps
   });
 
   const userContextParts = requestContext.userContext?.text ? [requestContext.userContext.text] : [];
+  const initialUserContext = joinUserContext(userContextParts);
 
   const { decision, explainability } = buildConfidenceContext(deps, {
     requestId: requestContext.requestId,
@@ -276,16 +408,30 @@ export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps
   }
 
   const activeSession = deps.orchestrator?.getSession(requestContext.requestId);
+  const planBundle = decision.gate === 'reject'
+    ? undefined
+    : planBundleFactory({
+        requestId: requestContext.requestId,
+        mode: requestContext.mode,
+        ticketId: requestContext.ticketId,
+        userContext: initialUserContext,
+        warnings: requestContext.warnings
+      });
+
+  if (deps.orchestrator && planBundle) {
+    deps.orchestrator.seedReviewRecords(requestContext.requestId, planBundle.flatScenarios);
+  }
 
   return buildResponse(
     requestContext.requestId,
     requestContext.mode,
     requestContext.ticketId,
-    requestContext.userContext?.text,
+    initialUserContext,
     requestContext.warnings,
     activeSession?.state,
     decision,
-    explainability
+    explainability,
+    planBundle
   );
 }
 
@@ -301,28 +447,40 @@ export function handleGateFreeText(
 
   const eventSink = deps.eventSink ?? new InMemoryEventSink();
   const now = deps.now ?? (() => new Date());
+  const planBundleFactory = deps.planBundleFactory ?? defaultPlanBundleFactory;
 
   const trimmed = freeText.trim();
   if (!trimmed) {
     const existingSession = deps.orchestrator?.getSession(requestId);
+    const currentUserContext = joinUserContext(snapshot.userContextParts);
     const { decision, explainability } = buildConfidenceContext(deps, {
       requestId,
       mode: snapshot.mode,
       ticketId: snapshot.ticketId,
-      userContext: joinUserContext(snapshot.userContextParts),
+      userContext: currentUserContext,
       warnings: snapshot.warnings,
       freeTextContext: snapshot.userContextParts
     });
+    const planBundle = decision.gate === 'reject'
+      ? undefined
+      : planBundleFactory({
+          requestId,
+          mode: snapshot.mode,
+          ticketId: snapshot.ticketId,
+          userContext: currentUserContext,
+          warnings: snapshot.warnings
+        });
 
     return buildResponse(
       requestId,
       snapshot.mode,
       snapshot.ticketId,
-      joinUserContext(snapshot.userContextParts),
+      currentUserContext,
       snapshot.warnings,
       existingSession?.state,
       decision,
-      explainability
+      explainability,
+      planBundle
     );
   }
 
@@ -333,6 +491,19 @@ export function handleGateFreeText(
   });
 
   deps.orchestrator?.appendFreeTextContext(requestId, trimmed);
+  const classifiedComment = classifyFreeTextComment(trimmed);
+  if (deps.orchestrator) {
+    deps.orchestrator.applyScenarioAction(requestId, {
+      type: 'comment.add',
+      requestId,
+      source: 'chat',
+      optimisticVersion: now().getTime(),
+      target: classifiedComment.target,
+      classification: classifiedComment.classification,
+      scenarioId: classifiedComment.scenarioId,
+      text: classifiedComment.text
+    });
+  }
 
   const mergedUserContext = joinUserContext(snapshot.userContextParts);
   const { decision, explainability } = buildConfidenceContext(deps, {
@@ -364,6 +535,15 @@ export function handleGateFreeText(
   }
 
   const activeSession = deps.orchestrator?.getSession(requestId);
+  const planBundle = decision.gate === 'reject'
+    ? undefined
+    : planBundleFactory({
+        requestId,
+        mode: snapshot.mode,
+        ticketId: snapshot.ticketId,
+        userContext: mergedUserContext,
+        warnings: snapshot.warnings
+      });
 
   return buildResponse(
     requestId,
@@ -373,7 +553,8 @@ export function handleGateFreeText(
     snapshot.warnings,
     activeSession?.state,
     decision,
-    explainability
+    explainability,
+    planBundle
   );
 }
 

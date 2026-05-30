@@ -33,14 +33,30 @@ describe('request correlation across orchestrator events', () => {
     expect(approveScript.ok).toBe(true);
     expect(continueToWrite.ok).toBe(true);
 
+    const scenarioId = response.planScenarios?.[0]?.scenarioId;
+    expect(scenarioId).toBeTruthy();
+
+    const reviewMutation = orchestrator.applyScenarioAction(response.requestId, {
+      type: 'scenario.approve',
+      requestId: response.requestId,
+      source: 'webview',
+      optimisticVersion: 1,
+      scenarioId: scenarioId as string
+    });
+    expect(reviewMutation.ok).toBe(true);
+    expect(reviewMutation.ackVersion).toBe(1);
+
     const events = sink.getEvents();
-    expect(events.length).toBeGreaterThanOrEqual(7);
+    expect(events.length).toBeGreaterThanOrEqual(8);
     expect(events.every((event) => event.requestId === 'req_corr_1')).toBe(true);
 
     const appliedTransitions = events.filter((event) => event.action === 'transition_applied');
     expect(appliedTransitions.length).toBeGreaterThanOrEqual(4);
     expect(appliedTransitions[0]?.details).toMatchObject({ to: 'awaiting_plan_approval' });
     expect(appliedTransitions.at(-1)?.details).toMatchObject({ to: 'ready_to_write' });
+
+    const reviewEvents = events.filter((event) => event.action === 'review_action_applied');
+    expect(reviewEvents).toHaveLength(1);
   });
 
   it('rejects unmapped quick actions without mutating state', () => {

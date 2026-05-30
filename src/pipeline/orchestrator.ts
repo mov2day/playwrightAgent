@@ -1,9 +1,40 @@
 import type { EventSink } from '../adapters/eventSink';
 import type { QuickAction } from '../participant/actions';
+import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
 import { createPipelineEvent } from './events';
+import { computeApprovedScope, computeRegenerationTargets, type ApprovalScopeRecord, type RevisionCommentInput } from './planning/approvalScope';
+import type { ScenarioPlanRecord } from './planning/planContracts';
 import type { PipelineState, TransitionResult } from './stateMachine';
 import { transitionState } from './stateMachine';
+
+export interface ReviewCommentRecord {
+  commentId: string;
+  target: 'scenario' | 'global';
+  classification: 'clarification' | 'constraint' | 'bug' | 'new_context';
+  text: string;
+  createdAt: string;
+}
+
+export interface ScenarioReviewRecord {
+  scenarioId: string;
+  primaryRequirementId: string;
+  acceptanceCriteriaIds: string[];
+  approvalState: 'pending' | 'approved' | 'rejected' | 'needs_revision';
+  revisionReason: string[];
+  comments: ReviewCommentRecord[];
+  updatedAt: string;
+  updatedBy: 'chat' | 'webview' | 'system';
+}
+
+export interface ReviewHistoryEntry {
+  requestId: string;
+  actionType: ReviewActionEnvelope['type'];
+  scenarioId?: string;
+  source: 'chat' | 'webview' | 'system';
+  reason?: string;
+  timestamp: string;
+}
 
 interface PipelineSession {
   requestId: string;
@@ -13,6 +44,22 @@ interface PipelineSession {
   confidenceProfileId?: string;
   decisionGate?: ConfidenceGate;
   freeTextContext: string[];
+  reviewRecordsByScenarioId: Record<string, ScenarioReviewRecord>;
+  revisionHistory: ReviewHistoryEntry[];
+  globalComments: ReviewCommentRecord[];
+  lastAckVersion: number;
+}
+
+export interface ReviewSnapshot {
+  requestId: string;
+  ackVersion: number;
+  approvedScenarioIds: string[];
+  excludedScenarioIds: string[];
+  approvedCount: number;
+  excludedCount: number;
+  regenerationScenarioIds: string[];
+  impactedRequirementIds: string[];
+  records: Record<string, ScenarioReviewRecord>;
 }
 
 export interface OrchestratorDeps {
@@ -26,6 +73,43 @@ export interface ActionTransitionResult {
   from: PipelineState;
   to?: PipelineState;
   errorCode?: 'UNKNOWN_REQUEST' | 'UNMAPPED_ACTION' | 'ILLEGAL_TRANSITION';
+}
+
+export interface ReviewActionResult extends ActionTransitionResult {
+  ackVersion?: number;
+  reviewSnapshot?: ReviewSnapshot;
+}
+
+function toScopeRecord(record: ScenarioReviewRecord): ApprovalScopeRecord {
+  return {
+    scenarioId: record.scenarioId,
+    primaryRequirementId: record.primaryRequirementId,
+    acceptanceCriteriaIds: [...record.acceptanceCriteriaIds],
+    approvalState: record.approvalState
+  };
+}
+
+function toRevisionComment(record: ReviewCommentRecord, scenarioId?: string): RevisionCommentInput {
+  return {
+    target: record.target,
+    classification: record.classification,
+    text: record.text,
+    scenarioId
+  };
+}
+
+function cloneScenarioRecord(record: ScenarioReviewRecord): ScenarioReviewRecord {
+  return {
+    ...record,
+    acceptanceCriteriaIds: [...record.acceptanceCriteriaIds],
+    revisionReason: [...record.revisionReason],
+    comments: [...record.comments]
+  };
+}
+
+function sanitizeReason(reason: string | undefined): string | undefined {
+  const normalized = reason?.trim();
+  return normalized ? normalized.slice(0, 400) : undefined;
 }
 
 export class PipelineOrchestrator {
@@ -47,7 +131,11 @@ export class PipelineOrchestrator {
       state: initialState,
       createdAt: timestamp,
       updatedAt: timestamp,
-      freeTextContext: []
+      freeTextContext: [],
+      reviewRecordsByScenarioId: {},
+      revisionHistory: [],
+      globalComments: [],
+      lastAckVersion: 0
     };
 
     this.sessions.set(requestId, session);
@@ -57,6 +145,49 @@ export class PipelineOrchestrator {
 
   getSession(requestId: string): PipelineSession | undefined {
     return this.sessions.get(requestId);
+  }
+
+  seedReviewRecords(requestId: string, scenarios: readonly ScenarioPlanRecord[]): boolean {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return false;
+    }
+
+    const nowIso = this.now().toISOString();
+    const seeded: Record<string, ScenarioReviewRecord> = {};
+
+    for (const scenario of scenarios) {
+      const existing = session.reviewRecordsByScenarioId[scenario.scenarioId];
+
+      seeded[scenario.scenarioId] = {
+        scenarioId: scenario.scenarioId,
+        primaryRequirementId: scenario.primaryRequirementId,
+        acceptanceCriteriaIds: [...scenario.acceptanceCriteriaIds],
+        approvalState: existing?.approvalState ?? scenario.approvalState,
+        revisionReason: existing ? [...existing.revisionReason] : [...scenario.revisionReason],
+        comments: existing ? [...existing.comments] : [],
+        updatedAt: existing?.updatedAt ?? nowIso,
+        updatedBy: existing?.updatedBy ?? 'system'
+      };
+    }
+
+    session.reviewRecordsByScenarioId = seeded;
+    session.updatedAt = nowIso;
+
+    this.emit(requestId, 'ui', 'review_records_seeded', session.state, {
+      scenarioCount: scenarios.length
+    }, session.confidenceProfileId, session.decisionGate);
+
+    return true;
+  }
+
+  getReviewSnapshot(requestId: string): ReviewSnapshot | undefined {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return undefined;
+    }
+
+    return this.buildReviewSnapshot(session);
   }
 
   setConfidenceDecision(
@@ -196,9 +327,227 @@ export class PipelineOrchestrator {
     return this.transition(requestId, targetState, action);
   }
 
+  applyScenarioAction(requestId: string, action: ReviewActionEnvelope): ReviewActionResult {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    if (action.requestId !== requestId) {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'UNMAPPED_ACTION'
+      };
+    }
+
+    if (action.type === 'session.continue') {
+      const result = this.handleQuickAction(requestId, 'continue');
+      return {
+        ...result,
+        ackVersion: session.lastAckVersion,
+        reviewSnapshot: this.buildReviewSnapshot(session)
+      };
+    }
+
+    if (action.type === 'session.cancel') {
+      const result = this.handleQuickAction(requestId, 'cancel');
+      return {
+        ...result,
+        ackVersion: session.lastAckVersion,
+        reviewSnapshot: this.buildReviewSnapshot(session)
+      };
+    }
+
+    const nowIso = this.now().toISOString();
+
+    if (action.type === 'scenario.approve' || action.type === 'scenario.reject' || action.type === 'scenario.revise') {
+      const current = session.reviewRecordsByScenarioId[action.scenarioId] ?? {
+        scenarioId: action.scenarioId,
+        primaryRequirementId: 'UNMAPPED',
+        acceptanceCriteriaIds: [],
+        approvalState: 'pending',
+        revisionReason: [],
+        comments: [],
+        updatedAt: nowIso,
+        updatedBy: 'system'
+      };
+
+      const next = cloneScenarioRecord(current);
+
+      if (action.type === 'scenario.approve') {
+        next.approvalState = 'approved';
+      }
+
+      if (action.type === 'scenario.reject') {
+        next.approvalState = 'needs_revision';
+        const reason = sanitizeReason(action.reason) ?? 'Scenario rejected by reviewer.';
+        if (!next.revisionReason.includes(reason)) {
+          next.revisionReason.push(reason);
+        }
+      }
+
+      if (action.type === 'scenario.revise') {
+        next.approvalState = 'needs_revision';
+        const reason = sanitizeReason(action.reason) ?? 'Scenario marked for revision.';
+        if (!next.revisionReason.includes(reason)) {
+          next.revisionReason.push(reason);
+        }
+      }
+
+      next.updatedAt = nowIso;
+      next.updatedBy = action.source;
+      session.reviewRecordsByScenarioId[action.scenarioId] = next;
+
+      session.revisionHistory.push({
+        requestId,
+        actionType: action.type,
+        scenarioId: action.scenarioId,
+        source: action.source,
+        reason: action.type === 'scenario.approve' ? undefined : sanitizeReason(action.reason),
+        timestamp: nowIso
+      });
+    }
+
+    if (action.type === 'bulk.approve' || action.type === 'bulk.reject') {
+      const records = Object.values(session.reviewRecordsByScenarioId);
+      const mode: 'pending_only' | 'force_override' = action.mode;
+
+      for (const record of records) {
+        const shouldMutate = mode === 'force_override' || record.approvalState === 'pending';
+        if (!shouldMutate) {
+          continue;
+        }
+
+        const next = cloneScenarioRecord(record);
+        if (action.type === 'bulk.approve') {
+          next.approvalState = 'approved';
+        } else {
+          next.approvalState = 'needs_revision';
+          const reason = sanitizeReason(action.reason) ?? 'Bulk rejection requested.';
+          if (!next.revisionReason.includes(reason)) {
+            next.revisionReason.push(reason);
+          }
+        }
+
+        next.updatedAt = nowIso;
+        next.updatedBy = action.source;
+        session.reviewRecordsByScenarioId[next.scenarioId] = next;
+      }
+
+      session.revisionHistory.push({
+        requestId,
+        actionType: action.type,
+        source: action.source,
+        reason: action.mode,
+        timestamp: nowIso
+      });
+    }
+
+    if (action.type === 'comment.add') {
+      const comment: ReviewCommentRecord = {
+        commentId: `${requestId}_${session.lastAckVersion + 1}`,
+        target: action.target,
+        classification: action.classification,
+        text: action.text.trim().slice(0, 400),
+        createdAt: nowIso
+      };
+
+      if (action.target === 'scenario' && action.scenarioId) {
+        const current = session.reviewRecordsByScenarioId[action.scenarioId] ?? {
+          scenarioId: action.scenarioId,
+          primaryRequirementId: 'UNMAPPED',
+          acceptanceCriteriaIds: [],
+          approvalState: 'pending',
+          revisionReason: [],
+          comments: [],
+          updatedAt: nowIso,
+          updatedBy: 'system'
+        };
+
+        const next = cloneScenarioRecord(current);
+        next.comments.push(comment);
+
+        if (action.classification === 'bug' || action.classification === 'constraint') {
+          next.approvalState = 'needs_revision';
+          if (!next.revisionReason.includes(action.text.trim())) {
+            next.revisionReason.push(action.text.trim());
+          }
+        }
+
+        next.updatedAt = nowIso;
+        next.updatedBy = action.source;
+        session.reviewRecordsByScenarioId[action.scenarioId] = next;
+      } else {
+        session.globalComments.push(comment);
+      }
+
+      session.revisionHistory.push({
+        requestId,
+        actionType: action.type,
+        scenarioId: action.scenarioId,
+        source: action.source,
+        reason: action.classification,
+        timestamp: nowIso
+      });
+    }
+
+    session.lastAckVersion += 1;
+    session.updatedAt = nowIso;
+
+    const snapshot = this.buildReviewSnapshot(session);
+
+    this.emit(requestId, 'ui', 'review_action_applied', session.state, {
+      actionType: action.type,
+      optimisticVersion: action.optimisticVersion,
+      ackVersion: session.lastAckVersion,
+      approvedCount: snapshot.approvedCount,
+      excludedCount: snapshot.excludedCount
+    }, session.confidenceProfileId, session.decisionGate);
+
+    return {
+      ok: true,
+      requestId,
+      from: session.state,
+      to: session.state,
+      ackVersion: session.lastAckVersion,
+      reviewSnapshot: snapshot
+    };
+  }
+
+  private buildReviewSnapshot(session: PipelineSession): ReviewSnapshot {
+    const records = Object.values(session.reviewRecordsByScenarioId);
+    const scope = computeApprovedScope(records.map(toScopeRecord));
+
+    const commentInputs: RevisionCommentInput[] = [
+      ...session.globalComments.map((comment) => toRevisionComment(comment)),
+      ...records.flatMap((record) => record.comments.map((comment) => toRevisionComment(comment, record.scenarioId)))
+    ];
+
+    const regeneration = computeRegenerationTargets(records.map(toScopeRecord), commentInputs);
+
+    return {
+      requestId: session.requestId,
+      ackVersion: session.lastAckVersion,
+      approvedScenarioIds: scope.approvedScenarioIds,
+      excludedScenarioIds: scope.excludedScenarioIds,
+      approvedCount: scope.approvedCount,
+      excludedCount: scope.excludedCount,
+      regenerationScenarioIds: regeneration.regenerationScenarioIds,
+      impactedRequirementIds: regeneration.impactedRequirementIds,
+      records: Object.fromEntries(records.map((record) => [record.scenarioId, cloneScenarioRecord(record)]))
+    };
+  }
+
   private emit(
     requestId: string,
-    stage: 'orchestrator' | 'gate',
+    stage: 'orchestrator' | 'gate' | 'ui',
     action: string,
     state?: PipelineState,
     details?: Record<string, unknown>,

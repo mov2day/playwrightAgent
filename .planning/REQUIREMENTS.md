@@ -39,12 +39,12 @@
 
 ### Planning and Approval UX
 
-- [ ] **PLAN-01**: Agent generates scenario plan with test names, scope, assertions, risk, and requirement/AC mappings.
-- [ ] **PLAN-02**: Agent displays plan in chat with structured textual summary.
-- [ ] **PLAN-03**: Agent displays plan in VS Code webview with professional tabbed grouped view.
-- [ ] **PLAN-04**: User can approve/reject each scenario individually.
-- [ ] **PLAN-05**: User can approve/reject all scenarios in bulk.
-- [ ] **PLAN-06**: Rejected scenarios are permanently excluded from generation scope in current run.
+- [x] **PLAN-01**: Agent generates scenario plan with test names, scope, assertions, risk, and requirement/AC mappings.
+- [x] **PLAN-02**: Agent displays plan in chat with structured textual summary.
+- [x] **PLAN-03**: Agent displays plan in VS Code webview with professional tabbed grouped view.
+- [x] **PLAN-04**: User can approve/reject each scenario individually.
+- [x] **PLAN-05**: User can approve/reject all scenarios in bulk.
+- [x] **PLAN-06**: Rejected scenarios are permanently excluded from generation scope in current run.
 
 ### Generation, Preview, and Safe Writes
 
@@ -60,8 +60,8 @@
 - [ ] **RUN-01**: User can trigger run of newly created/updated Playwright tests from workflow.
 - [ ] **RUN-02**: Agent reports pass/fail results with enough detail to distinguish likely test vs app failures.
 - [ ] **RUN-03**: On failures, agent attempts one controlled fix cycle and then asks user for next action if unresolved.
-- [ ] **RUN-04**: Agent supports quick chat actions (`approve`, `reject`, `continue`, `cancel`) at gate stages.
-- [ ] **RUN-05**: User freeform comments can trigger regeneration and return to approval gates.
+- [x] **RUN-04**: Agent supports quick chat actions (`approve`, `reject`, `continue`, `cancel`) at gate stages.
+- [x] **RUN-05**: User freeform comments can trigger regeneration and return to approval gates.
 
 ### Security and Auditability
 
@@ -113,12 +113,12 @@
 | CONF-04 | Phase 2 | Complete |
 | CONF-05 | Phase 2 | Complete |
 | CONF-06 | Phase 2 | Complete |
-| PLAN-01 | Phase 3 | Pending |
-| PLAN-02 | Phase 3 | Pending |
-| PLAN-03 | Phase 3 | Pending |
-| PLAN-04 | Phase 3 | Pending |
-| PLAN-05 | Phase 3 | Pending |
-| PLAN-06 | Phase 3 | Pending |
+| PLAN-01 | Phase 3 | Complete |
+| PLAN-02 | Phase 3 | Complete |
+| PLAN-03 | Phase 3 | Complete |
+| PLAN-04 | Phase 3 | Complete |
+| PLAN-05 | Phase 3 | Complete |
+| PLAN-06 | Phase 3 | Complete |
 | GEN-01 | Phase 4 | Pending |
 | GEN-02 | Phase 4 | Pending |
 | GEN-03 | Phase 4 | Pending |
@@ -128,8 +128,8 @@
 | RUN-01 | Phase 5 | Pending |
 | RUN-02 | Phase 5 | Pending |
 | RUN-03 | Phase 5 | Pending |
-| RUN-04 | Phase 3 | Pending |
-| RUN-05 | Phase 3 | Pending |
+| RUN-04 | Phase 3 | Complete |
+| RUN-05 | Phase 3 | Complete |
 | SECU-01 | Phase 6 | Pending |
 | SECU-02 | Phase 6 | Pending |
 | SECU-03 | Phase 5 | Pending |
@@ -142,4 +142,4 @@
 
 ---
 *Requirements defined: 2026-05-30*
-*Last updated: 2026-05-30 after initial definition*
+*Last updated: 2026-05-31 after Phase 3 completion*

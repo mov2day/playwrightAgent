@@ -3,13 +3,14 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "types": ["node", "vscode"]
+    "types": ["node", "vscode", "react", "react-dom"]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,6 +1,7 @@
 export type PipelineState =
   | 'initialized'
   | 'awaiting_plan_approval'
+  | 'awaiting_revision'
   | 'plan_approved'
   | 'plan_rejected'
   | 'awaiting_script_approval'
@@ -19,7 +20,8 @@ export interface TransitionResult {
 
 export const ALLOWED_TRANSITIONS: Readonly<Record<PipelineState, readonly PipelineState[]>> = {
   initialized: ['awaiting_plan_approval', 'cancelled'],
-  awaiting_plan_approval: ['plan_approved', 'plan_rejected', 'cancelled'],
+  awaiting_plan_approval: ['plan_approved', 'plan_rejected', 'awaiting_revision', 'cancelled'],
+  awaiting_revision: ['awaiting_plan_approval', 'cancelled'],
   plan_approved: ['awaiting_script_approval', 'cancelled'],
   plan_rejected: ['cancelled'],
   awaiting_script_approval: ['script_approved', 'script_rejected', 'cancelled'],

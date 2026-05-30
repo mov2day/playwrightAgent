@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Participant and Pipeline Foundation** - Build VS Code participant entry, slash-command parsing, and orchestration state machine.
 - [x] **Phase 2: Context Ingestion and Confidence Engine** - Implement repo analysis + secure Jira/Confluence fetch + confidence scoring gates. (completed 2026-05-30)
-- [ ] **Phase 3: Planning UX and Approval Gates** - Deliver chat + MUI webview plan presentation with per-scenario and bulk approvals.
+- [x] **Phase 3: Planning UX and Approval Gates** - Deliver chat + MUI webview plan presentation with per-scenario and bulk approvals. (completed 2026-05-31)
 - [ ] **Phase 4: Generation, Preview, and Safe File Writing** - Generate approved scripts only, enforce preview gate, and perform surgical writes.
 - [ ] **Phase 5: Execution, Retry Loop, and Audit Logging** - Run generated tests, controlled fix loop, and full AI interaction audit trail.
 - [ ] **Phase 6: Stabilization and v1 Readiness** - Hardening, verification, and documentation closeout for release-quality v1.
@@ -65,9 +65,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Plan generation prompt/contracts and mapping renderer
-- [ ] 03-02-PLAN.md — MUI webview review panel with grouped tabs and bulk actions
-- [ ] 03-03-PLAN.md — Approval state synchronization across chat and webview
+- [x] 03-01-PLAN.md — Plan generation prompt/contracts and mapping renderer
+- [x] 03-02-PLAN.md — MUI webview review panel with grouped tabs and bulk actions
+- [x] 03-03-PLAN.md — Approval state synchronization across chat and webview
 
 ### Phase 4: Generation, Preview, and Safe File Writing
 **Goal**: Generate tests only from approved scenarios, require preview approval, and write safely to repo files.
@@ -125,7 +125,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Participant and Pipeline Foundation | 3/3 | Complete | 2026-05-30 |
 | 2. Context Ingestion and Confidence Engine | 4/4 | Complete    | 2026-05-30 |
-| 3. Planning UX and Approval Gates | 0/3 | Not started | - |
+| 3. Planning UX and Approval Gates | 3/3 | Complete | 2026-05-31 |
 | 4. Generation, Preview, and Safe File Writing | 0/3 | Not started | - |
 | 5. Execution, Retry Loop, and Audit Logging | 0/3 | Not started | - |
 | 6. Stabilization and v1 Readiness | 0/2 | Not started | - |
