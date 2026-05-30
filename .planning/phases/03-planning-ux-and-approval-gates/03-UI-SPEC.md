@@ -1,10 +1,11 @@
 ---
 phase: 03
 slug: planning-ux-and-approval-gates
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-30
+reviewed_at: 2026-05-30T21:43:11Z
 ---
 
 # Phase 03 — UI Design Contract
@@ -65,6 +66,13 @@ Exceptions: `44px` minimum hit target for scenario-row action buttons and sticky
 
 Accent reserved for: active tab indicator, primary approve CTA, selected scenario outline/focus ring, approval progress counters.
 
+## Visual Hierarchy Contract
+
+Primary focal point and eye-order for plan review surface:
+1. Scenario status chips and state counts (`pending`, `approved`, `rejected`, `needs_revision`)
+2. Primary approve CTA in sticky bulk-action bar (`Approve Selected Scenarios`)
+3. Revision comment affordance (per-scenario + global comment entry points)
+
 ---
 
 ## Copywriting Contract
@@ -90,11 +98,11 @@ Accent reserved for: active tab indicator, primary approve CTA, selected scenari
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: FLAG (non-blocking; focal-point contract added)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-05-30
