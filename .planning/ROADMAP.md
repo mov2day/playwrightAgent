@@ -65,9 +65,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Plan generation prompt/contracts and mapping renderer
-- [ ] 03-02: MUI webview review panel with grouped tabs and bulk actions
-- [ ] 03-03: Approval state synchronization across chat and webview
+- [ ] 03-01-PLAN.md — Plan generation prompt/contracts and mapping renderer
+- [ ] 03-02-PLAN.md — MUI webview review panel with grouped tabs and bulk actions
+- [ ] 03-03-PLAN.md — Approval state synchronization across chat and webview
 
 ### Phase 4: Generation, Preview, and Safe File Writing
 **Goal**: Generate tests only from approved scenarios, require preview approval, and write safely to repo files.
