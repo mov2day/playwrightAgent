@@ -14,10 +14,10 @@
 
 ### Repository Analysis
 
-- [ ] **REPO-01**: Agent analyzes repository language/framework/test layout before planning.
-- [ ] **REPO-02**: Agent identifies whether project follows POM, Screenplay, or hybrid patterns.
-- [ ] **REPO-03**: Agent detects reusable fixtures/helpers/page objects/tasks and reuses them during generation.
-- [ ] **REPO-04**: Agent reports repo-analysis summary to user before plan approval stage.
+- [x] **REPO-01**: Agent analyzes repository language/framework/test layout before planning.
+- [x] **REPO-02**: Agent identifies whether project follows POM, Screenplay, or hybrid patterns.
+- [x] **REPO-03**: Agent detects reusable fixtures/helpers/page objects/tasks and reuses them during generation.
+- [x] **REPO-04**: Agent reports repo-analysis summary to user before plan approval stage.
 
 ### Jira and Confluence Context Ingestion
 
@@ -97,10 +97,10 @@
 | PART-02 | Phase 1 | Complete |
 | PART-03 | Phase 1 | Complete |
 | PART-04 | Phase 1 | Complete |
-| REPO-01 | Phase 2 | Pending |
-| REPO-02 | Phase 2 | Pending |
-| REPO-03 | Phase 2 | Pending |
-| REPO-04 | Phase 2 | Pending |
+| REPO-01 | Phase 2 | Complete |
+| REPO-02 | Phase 2 | Complete |
+| REPO-03 | Phase 2 | Complete |
+| REPO-04 | Phase 2 | Complete |
 | JIRA-01 | Phase 2 | Pending |
 | JIRA-02 | Phase 2 | Pending |
 | JIRA-03 | Phase 2 | Pending |
