@@ -2,12 +2,15 @@ import type { EventSink, PipelineEvent } from '../adapters/eventSink';
 import { InMemoryEventSink } from '../adapters/eventSink';
 import { buildRequestContext } from '../pipeline/bootstrapContext';
 import type { PlanMode } from '../pipeline/contracts';
+import type { PipelineOrchestrator } from '../pipeline/orchestrator';
+import type { PipelineState } from '../pipeline/stateMachine';
 import { parseSlashPlanInput } from './slashPlanParser';
 import { QUICK_ACTIONS, type QuickAction } from './actions';
 
 export interface PlanCommandResponse {
   requestId: string;
   mode: PlanMode;
+  state?: PipelineState;
   ticketId?: string;
   message: string;
   userContext?: string;
@@ -19,6 +22,7 @@ export interface ParticipantHandlerDeps {
   eventSink?: EventSink;
   requestIdFactory?: () => string;
   now?: () => Date;
+  orchestrator?: PipelineOrchestrator;
 }
 
 function emitEvent(
@@ -73,9 +77,17 @@ export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps
     source: requestContext.userContext?.source
   });
 
+  if (deps.orchestrator) {
+    deps.orchestrator.startSession(requestContext.requestId, 'initialized');
+    deps.orchestrator.transition(requestContext.requestId, 'awaiting_plan_approval', 'bootstrap_complete');
+  }
+
+  const activeSession = deps.orchestrator?.getSession(requestContext.requestId);
+
   return {
     requestId: requestContext.requestId,
     mode: requestContext.mode,
+    state: activeSession?.state,
     ticketId: requestContext.ticketId,
     message: toMessage(requestContext.mode),
     userContext: requestContext.userContext?.text,
