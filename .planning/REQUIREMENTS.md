@@ -21,12 +21,12 @@
 
 ### Jira and Confluence Context Ingestion
 
-- [ ] **JIRA-01**: Agent fetches ticket data via local tooling only (no direct model-side API access).
-- [ ] **JIRA-02**: For epic tickets, agent fetches full epic details plus linked children with full details.
-- [ ] **JIRA-03**: For task tickets, agent fetches full task details, all comments, attachments, linked Jira issues, linked Confluence pages, and all sub-task full details.
-- [ ] **JIRA-04**: For sub-task tickets, agent fetches full sub-task details, all comments, attachments, linked Jira issues, linked Confluence pages, and full parent task details.
-- [ ] **JIRA-05**: For any ticket type, agent traverses linked Jira issues and Confluence pages from the ticket graph and includes their full details.
-- [ ] **JIRA-06**: For any ticket type, agent always fetches linked epic details when an epic relationship exists.
+- [x] **JIRA-01**: Agent fetches ticket data via local tooling only (no direct model-side API access).
+- [x] **JIRA-02**: For epic tickets, agent fetches full epic details plus linked children with full details.
+- [x] **JIRA-03**: For task tickets, agent fetches full task details, all comments, attachments, linked Jira issues, linked Confluence pages, and all sub-task full details.
+- [x] **JIRA-04**: For sub-task tickets, agent fetches full sub-task details, all comments, attachments, linked Jira issues, linked Confluence pages, and full parent task details.
+- [x] **JIRA-05**: For any ticket type, agent traverses linked Jira issues and Confluence pages from the ticket graph and includes their full details.
+- [x] **JIRA-06**: For any ticket type, agent always fetches linked epic details when an epic relationship exists.
 - [ ] **CONF-01**: Agent generates Confluence queries from Jira context and fetches candidate pages via local tooling.
 - [ ] **CONF-02**: Agent excludes low-relevance Confluence results from final planning context.
 
@@ -101,12 +101,12 @@
 | REPO-02 | Phase 2 | Complete |
 | REPO-03 | Phase 2 | Complete |
 | REPO-04 | Phase 2 | Complete |
-| JIRA-01 | Phase 2 | Pending |
-| JIRA-02 | Phase 2 | Pending |
-| JIRA-03 | Phase 2 | Pending |
-| JIRA-04 | Phase 2 | Pending |
-| JIRA-05 | Phase 2 | Pending |
-| JIRA-06 | Phase 2 | Pending |
+| JIRA-01 | Phase 2 | Complete |
+| JIRA-02 | Phase 2 | Complete |
+| JIRA-03 | Phase 2 | Complete |
+| JIRA-04 | Phase 2 | Complete |
+| JIRA-05 | Phase 2 | Complete |
+| JIRA-06 | Phase 2 | Complete |
 | CONF-01 | Phase 2 | Pending |
 | CONF-02 | Phase 2 | Pending |
 | CONF-03 | Phase 2 | Pending |
