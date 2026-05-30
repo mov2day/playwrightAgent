@@ -247,17 +247,17 @@ function approvedScenarioIds(records: ScenarioApprovalRecord[]): string[] {
 </sota_updates>
 
 <open_questions>
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Webview bundle strategy**
-   - What we know: React + MUI required for review UX.
-   - What's unclear: exact bundling approach and perf budget for VS Code webview.
-   - Recommendation: start with minimal shared review bundle and defer aggressive optimization until Phase 6 hardening.
+   - Resolution: use a single review webview bundle for Phase 3 with shared model/action contracts and React + MUI entrypoint.
+   - Scope guard: no bundle-splitting or perf micro-optimization in this phase; capture optimization follow-ups in Phase 6 hardening only.
+   - Plan impact: aligns to `03-02-PLAN.md` Task 2 (`reviewApp.tsx` + `planReviewShell.ts` host integration).
 
 2. **Revision reason cardinality limits**
-   - What we know: `revisionReason[]` required for traceability.
-   - What's unclear: max count/retention policy per scenario in active session.
-   - Recommendation: keep full in-session history; add truncation/persistence policy in Phase 5 logging work.
+   - Resolution: keep full `revisionReason[]` history in-session for Phase 3 with append-only event entries.
+   - Scope guard: no truncation/persistence cap introduced in this phase; retention policy belongs to Phase 5 logging/persistence.
+   - Plan impact: aligns to `03-03-PLAN.md` Task 1/Task 2 reject+revise lifecycle handling.
 </open_questions>
 
 <sources>
