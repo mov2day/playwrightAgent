@@ -57,4 +57,26 @@ describe('LocalToolJiraClient', () => {
     expect(payload.attachments).toHaveLength(1);
     expect(payload.completeness.status).toBe('full');
   });
+
+  it('surfaces timeout failures with redacted message', async () => {
+    const runner = vi.fn(async () => ({
+      ok: false,
+      command: 'jira-tool',
+      args: [],
+      exitCode: null,
+      stdout: '',
+      stderr: 'Authorization=Bearer abc123',
+      timedOut: true,
+      error: 'Authorization=Bearer abc123'
+    }));
+
+    const client = new LocalToolJiraClient({ runner });
+
+    await expect(
+      client.fetchTicketGraph({ ticketId: 'QA-789', requestId: 'req_jira_timeout' })
+    ).rejects.toThrow(/timed out/i);
+    await expect(
+      client.fetchTicketGraph({ ticketId: 'QA-789', requestId: 'req_jira_timeout' })
+    ).rejects.not.toThrow(/abc123/);
+  });
 });

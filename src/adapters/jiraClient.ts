@@ -143,6 +143,9 @@ export class LocalToolJiraClient implements JiraClient {
 
     if (!result.ok) {
       const errorText = toSafeError(result.error ?? result.stderr ?? 'Unknown Jira tooling failure');
+      if (result.timedOut) {
+        throw new Error(`Jira local tooling timed out: ${errorText}`);
+      }
       throw new Error(`Jira local tooling failed: ${errorText}`);
     }
 
