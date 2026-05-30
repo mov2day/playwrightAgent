@@ -12,7 +12,7 @@ This roadmap delivers a full enterprise-grade `@PlaywrightAgent` Copilot partici
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Participant and Pipeline Foundation** - Build VS Code participant entry, slash-command parsing, and orchestration state machine.
+- [x] **Phase 1: Participant and Pipeline Foundation** - Build VS Code participant entry, slash-command parsing, and orchestration state machine.
 - [ ] **Phase 2: Context Ingestion and Confidence Engine** - Implement repo analysis + secure Jira/Confluence fetch + confidence scoring gates.
 - [ ] **Phase 3: Planning UX and Approval Gates** - Deliver chat + MUI webview plan presentation with per-scenario and bulk approvals.
 - [ ] **Phase 4: Generation, Preview, and Safe File Writing** - Generate approved scripts only, enforce preview gate, and perform surgical writes.
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Participant and Pipeline Foundation | 0/3 | Not started | - |
+| 1. Participant and Pipeline Foundation | 3/3 | Complete | 2026-05-30 |
 | 2. Context Ingestion and Confidence Engine | 0/4 | Not started | - |
 | 3. Planning UX and Approval Gates | 0/3 | Not started | - |
 | 4. Generation, Preview, and Safe File Writing | 0/3 | Not started | - |
