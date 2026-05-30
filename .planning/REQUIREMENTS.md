@@ -7,10 +7,10 @@
 
 ### Participant and Commanding
 
-- [ ] **PART-01**: QA user can invoke `@PlaywrightAgent` from Copilot Chat.
-- [ ] **PART-02**: QA user can run `/plan <JIRA-ID> [extra-context]` to start pipeline.
-- [ ] **PART-03**: QA user can run `/plan` with no ticket and provide manual context.
-- [ ] **PART-04**: Agent keeps request-scoped pipeline state across all gates until completion or cancel.
+- [x] **PART-01**: QA user can invoke `@PlaywrightAgent` from Copilot Chat.
+- [x] **PART-02**: QA user can run `/plan <JIRA-ID> [extra-context]` to start pipeline.
+- [x] **PART-03**: QA user can run `/plan` with no ticket and provide manual context.
+- [x] **PART-04**: Agent keeps request-scoped pipeline state across all gates until completion or cancel.
 
 ### Repository Analysis
 
@@ -93,10 +93,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PART-01 | Phase 1 | Pending |
-| PART-02 | Phase 1 | Pending |
-| PART-03 | Phase 1 | Pending |
-| PART-04 | Phase 1 | Pending |
+| PART-01 | Phase 1 | Complete |
+| PART-02 | Phase 1 | Complete |
+| PART-03 | Phase 1 | Complete |
+| PART-04 | Phase 1 | Complete |
 | REPO-01 | Phase 2 | Pending |
 | REPO-02 | Phase 2 | Pending |
 | REPO-03 | Phase 2 | Pending |

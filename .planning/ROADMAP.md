@@ -32,9 +32,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Extension scaffold and chat participant registration
-- [ ] 01-02: Slash command parser and request context bootstrap
-- [ ] 01-03: Pipeline state machine and gate transition guards
+- [x] 01-01: Extension scaffold and chat participant registration
+- [x] 01-02: Slash command parser and request context bootstrap
+- [x] 01-03: Pipeline state machine and gate transition guards
 
 ### Phase 2: Context Ingestion and Confidence Engine
 **Goal**: Build reliable repo analysis and secure Jira/Confluence context fusion with thresholded confidence decisions.
