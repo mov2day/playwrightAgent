@@ -17,9 +17,10 @@ describe('no-ticket and soft-fail plan flow', () => {
     expect(response.warnings).toEqual([]);
 
     const events = sink.getEvents();
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(4);
     expect(events.every((event) => event.requestId === 'req_fixed_1')).toBe(true);
-    expect(events.at(-1)?.details).toMatchObject({ hasUserContext: false });
+    const bootstrapEvent = events.find((event) => event.action === 'context_bootstrapped');
+    expect(bootstrapEvent?.details).toMatchObject({ hasUserContext: false });
   });
 
   it('soft-fails invalid ticket token and preserves user context', () => {
@@ -35,9 +36,10 @@ describe('no-ticket and soft-fail plan flow', () => {
     expect(response.warnings[0]).toContain('strict ticket format');
 
     const events = sink.getEvents();
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(4);
     expect(events.every((event) => event.requestId === 'req_fixed_2')).toBe(true);
-    expect(events.at(-1)?.details).toMatchObject({
+    const bootstrapEvent = events.find((event) => event.action === 'context_bootstrapped');
+    expect(bootstrapEvent?.details).toMatchObject({
       hasUserContext: true,
       source: 'user_input'
     });

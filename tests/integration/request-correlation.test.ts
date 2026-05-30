@@ -54,11 +54,14 @@ describe('request correlation across orchestrator events', () => {
       now: () => new Date('2026-05-30T15:00:00.000Z')
     });
 
-    const result = orchestrator.handleQuickAction(response.requestId, 'continue');
+    const first = orchestrator.handleQuickAction(response.requestId, 'continue');
+    expect(first.ok).toBe(true);
+
+    const result = orchestrator.handleQuickAction(response.requestId, 'approve');
     const session = orchestrator.getSession(response.requestId);
 
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe('UNMAPPED_ACTION');
-    expect(session?.state).toBe('awaiting_plan_approval');
+    expect(session?.state).toBe('plan_approved');
   });
 });

@@ -1,5 +1,6 @@
 import type { EventSink } from '../adapters/eventSink';
 import type { QuickAction } from '../participant/actions';
+import type { ConfidenceGate } from './confidence/confidenceContracts';
 import { createPipelineEvent } from './events';
 import type { PipelineState, TransitionResult } from './stateMachine';
 import { transitionState } from './stateMachine';
@@ -9,6 +10,9 @@ interface PipelineSession {
   state: PipelineState;
   createdAt: string;
   updatedAt: string;
+  confidenceProfileId?: string;
+  decisionGate?: ConfidenceGate;
+  freeTextContext: string[];
 }
 
 export interface OrchestratorDeps {
@@ -42,7 +46,8 @@ export class PipelineOrchestrator {
       requestId,
       state: initialState,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
+      freeTextContext: []
     };
 
     this.sessions.set(requestId, session);
@@ -52,6 +57,47 @@ export class PipelineOrchestrator {
 
   getSession(requestId: string): PipelineSession | undefined {
     return this.sessions.get(requestId);
+  }
+
+  setConfidenceDecision(
+    requestId: string,
+    confidenceProfileId: string,
+    decisionGate: ConfidenceGate
+  ): void {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return;
+    }
+
+    session.confidenceProfileId = confidenceProfileId;
+    session.decisionGate = decisionGate;
+    session.updatedAt = this.now().toISOString();
+
+    this.emit(requestId, 'gate', 'confidence_decision_recorded', session.state, {
+      confidenceProfileId,
+      decisionGate
+    }, confidenceProfileId, decisionGate);
+  }
+
+  appendFreeTextContext(requestId: string, text: string): boolean {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return false;
+    }
+
+    const normalized = text.trim();
+    if (!normalized) {
+      return false;
+    }
+
+    session.freeTextContext.push(normalized);
+    session.updatedAt = this.now().toISOString();
+
+    this.emit(requestId, 'gate', 'free_text_appended', session.state, {
+      appendedLength: normalized.length,
+      freeTextCount: session.freeTextContext.length
+    }, session.confidenceProfileId, session.decisionGate);
+    return true;
   }
 
   transition(requestId: string, to: PipelineState, action: string): ActionTransitionResult {
@@ -126,7 +172,9 @@ export class PipelineOrchestrator {
         targetState = 'script_rejected';
       }
     } else if (action === 'continue') {
-      if (session.state === 'plan_approved') {
+      if (session.state === 'awaiting_plan_approval' && session.decisionGate === 'approval_required') {
+        targetState = 'plan_approved';
+      } else if (session.state === 'plan_approved') {
         targetState = 'awaiting_script_approval';
       } else if (session.state === 'script_approved') {
         targetState = 'ready_to_write';
@@ -153,7 +201,9 @@ export class PipelineOrchestrator {
     stage: 'orchestrator' | 'gate',
     action: string,
     state?: PipelineState,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
+    confidenceProfileId?: string,
+    decisionGate?: ConfidenceGate
   ): void {
     const event = createPipelineEvent(
       {
@@ -161,6 +211,8 @@ export class PipelineOrchestrator {
         stage,
         action,
         state,
+        confidenceProfileId,
+        decisionGate,
         details
       },
       this.now
