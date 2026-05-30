@@ -1,0 +1,25 @@
+{
+  "name": "playwrightagent-extension-foundation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase 1 foundation for PlaywrightAgent VS Code participant",
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run tests/integration tests/smoke"
+  },
+  "dependencies": {
+    "pino": "^9.14.0",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/vscode": "^1.100.2",
+    "@typescript-eslint/eslint-plugin": "^8.33.1",
+    "@typescript-eslint/parser": "^8.33.1",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
+  }
+}
