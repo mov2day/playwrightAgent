@@ -44,9 +44,10 @@ export function registerPlaywrightAgentParticipant(
 
 export function activate(context: vscode.ExtensionContext, api?: VscodeLikeApi): void {
   const resolvedApi = resolveApi(api);
+  const wasRegistered = Boolean(participantDisposable);
   const disposable = registerPlaywrightAgentParticipant(resolvedApi);
 
-  if (disposable) {
+  if (disposable && !wasRegistered) {
     context.subscriptions.push(disposable as unknown as vscode.Disposable);
   }
 }
