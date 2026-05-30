@@ -13,7 +13,7 @@ This roadmap delivers a full enterprise-grade `@PlaywrightAgent` Copilot partici
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Participant and Pipeline Foundation** - Build VS Code participant entry, slash-command parsing, and orchestration state machine.
-- [ ] **Phase 2: Context Ingestion and Confidence Engine** - Implement repo analysis + secure Jira/Confluence fetch + confidence scoring gates.
+- [x] **Phase 2: Context Ingestion and Confidence Engine** - Implement repo analysis + secure Jira/Confluence fetch + confidence scoring gates. (completed 2026-05-30)
 - [ ] **Phase 3: Planning UX and Approval Gates** - Deliver chat + MUI webview plan presentation with per-scenario and bulk approvals.
 - [ ] **Phase 4: Generation, Preview, and Safe File Writing** - Generate approved scripts only, enforce preview gate, and perform surgical writes.
 - [ ] **Phase 5: Execution, Retry Loop, and Audit Logging** - Run generated tests, controlled fix loop, and full AI interaction audit trail.
@@ -51,7 +51,7 @@ Plans:
 - [x] 02-01: Repo analyzer service and pattern classifier
 - [x] 02-02: Jira local-tool adapter and deep traversal contracts
 - [x] 02-03: Confluence local-tool adapter and relevance scoring
-- [ ] 02-04: Confidence engine + gate decision integration
+- [x] 02-04: Confidence engine + gate decision integration
 
 ### Phase 3: Planning UX and Approval Gates
 **Goal**: Produce requirement-mapped test plans and approval-first review surfaces in chat and webview.
@@ -124,7 +124,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Participant and Pipeline Foundation | 3/3 | Complete | 2026-05-30 |
-| 2. Context Ingestion and Confidence Engine | 3/4 | In Progress|  |
+| 2. Context Ingestion and Confidence Engine | 4/4 | Complete   | 2026-05-30 |
 | 3. Planning UX and Approval Gates | 0/3 | Not started | - |
 | 4. Generation, Preview, and Safe File Writing | 0/3 | Not started | - |
 | 5. Execution, Retry Loop, and Audit Logging | 0/3 | Not started | - |

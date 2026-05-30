@@ -32,10 +32,10 @@
 
 ### Confidence Scoring and Gate Policy
 
-- [ ] **CONF-03**: Agent computes explainable confidence score from Jira quality, repo quality, user context, and relevant Confluence context.
-- [ ] **CONF-04**: Agent hard-stops and rejects pipeline when score is below 40.
-- [ ] **CONF-05**: Agent requires user approval to continue when score is between 40 and 70.
-- [ ] **CONF-06**: Agent continues without extra gate when score is above 70.
+- [x] **CONF-03**: Agent computes explainable confidence score from Jira quality, repo quality, user context, and relevant Confluence context.
+- [x] **CONF-04**: Agent hard-stops and rejects pipeline when score is below 40.
+- [x] **CONF-05**: Agent requires user approval to continue when score is between 40 and 70.
+- [x] **CONF-06**: Agent continues without extra gate when score is above 70.
 
 ### Planning and Approval UX
 
@@ -109,10 +109,10 @@
 | JIRA-06 | Phase 2 | Complete |
 | CONF-01 | Phase 2 | Complete |
 | CONF-02 | Phase 2 | Complete |
-| CONF-03 | Phase 2 | Pending |
-| CONF-04 | Phase 2 | Pending |
-| CONF-05 | Phase 2 | Pending |
-| CONF-06 | Phase 2 | Pending |
+| CONF-03 | Phase 2 | Complete |
+| CONF-04 | Phase 2 | Complete |
+| CONF-05 | Phase 2 | Complete |
+| CONF-06 | Phase 2 | Complete |
 | PLAN-01 | Phase 3 | Pending |
 | PLAN-02 | Phase 3 | Pending |
 | PLAN-03 | Phase 3 | Pending |
