@@ -7,6 +7,8 @@ export interface PipelineStageEvent {
   stage: PipelineStage;
   action: string;
   state?: PipelineState;
+  confidenceProfileId?: string;
+  decisionGate?: 'reject' | 'approval_required' | 'continue';
   timestamp: string;
   details?: Record<string, unknown>;
 }
@@ -16,6 +18,8 @@ export interface CreatePipelineEventInput {
   stage: PipelineStage;
   action: string;
   state?: PipelineState;
+  confidenceProfileId?: string;
+  decisionGate?: 'reject' | 'approval_required' | 'continue';
   details?: Record<string, unknown>;
 }
 
@@ -28,6 +32,8 @@ export function createPipelineEvent(
     stage: input.stage,
     action: input.action,
     state: input.state,
+    confidenceProfileId: input.confidenceProfileId,
+    decisionGate: input.decisionGate,
     timestamp: now().toISOString(),
     details: input.details
   };

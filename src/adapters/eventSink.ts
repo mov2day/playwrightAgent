@@ -3,6 +3,8 @@ export interface PipelineEvent {
   stage: string;
   action: string;
   timestamp: string;
+  confidenceProfileId?: string;
+  decisionGate?: 'reject' | 'approval_required' | 'continue';
   details?: Record<string, unknown>;
 }
 
