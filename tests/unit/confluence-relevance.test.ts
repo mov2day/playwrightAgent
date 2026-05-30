@@ -180,6 +180,7 @@ describe('buildConfluenceContext', () => {
     expect(context.midCount).toBe(context.visibleOnly.length);
     expect(context.excludedLowCount).toBe(1);
     expect(context.bonusCandidates.some((candidate) => candidate.page.id === 'CP-3')).toBe(false);
+    expect(context.scoringContribution.some((candidate) => candidate.page.id === 'CP-3')).toBe(false);
     expect(context.bonusContributionPotential).toBeGreaterThan(0);
   });
 });

@@ -25,6 +25,7 @@ export interface ConfluenceContextResult {
   requestId: string;
   queries: ConfluenceQuery[];
   bonusCandidates: ConfluencePageScore[];
+  scoringContribution: ConfluencePageScore[];
   visibleOnly: ConfluencePageScore[];
   excludedLow: ConfluencePageScore[];
   highCount: number;
@@ -75,15 +76,17 @@ export async function buildConfluenceContext(
   });
 
   const bonusCandidates = scoredPages.filter((page) => page.bucket === 'high');
+  const scoringContribution = [...bonusCandidates];
   const visibleOnly = scoredPages.filter((page) => page.bucket === 'mid');
   const excludedLow = scoredPages.filter((page) => page.bucket === 'low');
 
-  const bonusContributionPotential = bonusCandidates.reduce((total, candidate) => total + candidate.score, 0);
+  const bonusContributionPotential = scoringContribution.reduce((total, candidate) => total + candidate.score, 0);
 
   return {
     requestId: jiraContext.requestId,
     queries,
     bonusCandidates,
+    scoringContribution,
     visibleOnly,
     excludedLow,
     highCount: bonusCandidates.length,
