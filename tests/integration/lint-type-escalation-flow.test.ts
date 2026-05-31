@@ -62,7 +62,8 @@ describe('lint/type escalation flow', () => {
     expect(result.status).toBe('failed_needs_retry');
     expect(result.failedStage).toBe('lint');
     expect(result.stageResults[0]?.result.stdout).toContain('lint failure');
-    expect(result.stageResults[0]?.result.stderr).toContain('Bearer [REDACTED]');
+    expect(result.stageResults[0]?.result.stderr).toContain('Authorization:');
+    expect(result.stageResults[0]?.result.stderr).toContain('[REDACTED]');
     expect(result.stageResults[0]?.result.timedOut).toBe(false);
   });
 });
