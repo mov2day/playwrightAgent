@@ -4,6 +4,16 @@ import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
 import { createPipelineEvent } from './events';
+import {
+  runPostWriteLintTypeGuardrail,
+  type LintTypeRunnerDeps
+} from './guardrails/lintTypeRunner';
+import {
+  resolveLintTypeRetryEscalation,
+  type LintTypeEscalationBundle,
+  type RetryEscalationOutcome,
+  type ScopedAutoFixResult
+} from './guardrails/retryEscalation';
 import { computeApprovedScope, computeRegenerationTargets, type ApprovalScopeRecord, type RevisionCommentInput } from './planning/approvalScope';
 import type { ScenarioPlanRecord } from './planning/planContracts';
 import { PREVIEW_VERSION } from './preview/previewContracts';
@@ -85,6 +95,8 @@ interface PipelineSession {
   previewVersion: string;
   previewVersionCounter: number;
   approvedPreviewVersion?: string;
+  pendingGuardrailEscalation?: LintTypeEscalationBundle;
+  guardrailDecisionHistory: GuardrailDecisionRecord[];
 }
 
 export interface ReviewSnapshot {
@@ -109,6 +121,18 @@ export interface OrchestratorDeps {
   stageEntryGateEvaluator?: StageEntryGateEvaluator;
 }
 
+export interface GuardrailDecisionRecord {
+  action: QuickAction;
+  comment: string;
+  decidedAt: string;
+}
+
+export interface ExecuteWriteWithGuardrailsOptions {
+  targetFiles?: readonly string[];
+  applyScopedAutoFix?: (targetFiles: readonly string[]) => Promise<ScopedAutoFixResult>;
+  commandRunner?: LintTypeRunnerDeps['commandRunner'];
+}
+
 export interface StageEntryDecision {
   stage: SkillGateStage;
   blocked: boolean;
@@ -131,6 +155,7 @@ export interface ActionTransitionResult {
     | 'STAGE_ENTRY_BLOCKED'
     | 'PREVIEW_APPROVAL_REQUIRED'
     | 'PREVIEW_VERSION_MISMATCH'
+    | 'GUARDRAIL_ESCALATION_REQUIRED'
     | 'WRITE_EXECUTION_FAILED';
   stageEntry?: StageEntryDecision;
 }
@@ -142,6 +167,8 @@ export interface ReviewActionResult extends ActionTransitionResult {
 
 export interface WriteExecutionResult extends ActionTransitionResult {
   report?: WriteReport;
+  guardrail?: RetryEscalationOutcome;
+  escalation?: LintTypeEscalationBundle;
 }
 
 export type StageEntryGateEvaluator = (stage: SkillGateStage) => SkillQualityGateResult;
@@ -186,6 +213,11 @@ function hasCurrentPreviewApproval(session: PipelineSession): boolean {
   return Boolean(session.approvedPreviewVersion) && session.approvedPreviewVersion === session.previewVersion;
 }
 
+function normalizeTargetFiles(targetFiles: readonly string[]): string[] {
+  return [...new Set(targetFiles.map((targetFile) => targetFile.trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right));
+}
+
 export class PipelineOrchestrator {
   private readonly sessions = new Map<string, PipelineSession>();
 
@@ -228,7 +260,9 @@ export class PipelineOrchestrator {
       lastAckVersion: 0,
       previewVersion: PREVIEW_VERSION,
       previewVersionCounter: 1,
-      approvedPreviewVersion: undefined
+      approvedPreviewVersion: undefined,
+      pendingGuardrailEscalation: undefined,
+      guardrailDecisionHistory: []
     };
 
     this.sessions.set(requestId, session);
@@ -644,6 +678,178 @@ export class PipelineOrchestrator {
         from: transition.from,
         to: transition.to,
         report
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown write failure';
+      this.emit(requestId, 'gate', 'write_execution_failed', session.state, {
+        message
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'WRITE_EXECUTION_FAILED'
+      };
+    }
+  }
+
+  async executeWritePlanWithGuardrails(
+    requestId: string,
+    entries: readonly SurgicalWritePlanEntryInput[],
+    options: ExecuteWriteWithGuardrailsOptions = {}
+  ): Promise<WriteExecutionResult> {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    if (session.state !== 'ready_to_write') {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'ILLEGAL_TRANSITION'
+      };
+    }
+
+    if (!hasCurrentPreviewApproval(session)) {
+      this.emit(requestId, 'gate', 'preview_approval_required', session.state, {
+        previewVersion: session.previewVersion,
+        approvedPreviewVersion: session.approvedPreviewVersion
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'PREVIEW_APPROVAL_REQUIRED'
+      };
+    }
+
+    const stageEntry = this.evaluatePreStageGuard('write');
+    if (stageEntry.blocked || stageEntry.fail_closed || stageEntry.requires_user_decision) {
+      this.emit(requestId, 'gate', 'stage_entry_blocked', session.state, {
+        stage: stageEntry.stage,
+        blocked: stageEntry.blocked,
+        fail_closed: stageEntry.fail_closed,
+        requires_user_decision: stageEntry.requires_user_decision,
+        reasonCodes: stageEntry.reasons.map((reason) => reason.code),
+        action: 'write_execute_guardrailed'
+      });
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'STAGE_ENTRY_BLOCKED',
+        stageEntry
+      };
+    }
+
+    this.emit(requestId, 'gate', 'stage_entry_allowed', session.state, {
+      stage: stageEntry.stage,
+      blocked: stageEntry.blocked,
+      fail_closed: stageEntry.fail_closed,
+      requires_user_decision: stageEntry.requires_user_decision,
+      manifest_hash: stageEntry.manifest_hash,
+      action: 'write_execute_guardrailed'
+    });
+
+    try {
+      const writeResult = executeSurgicalWritePlan(entries, {
+        rootDir: this.rootDir,
+        forbidDelete: true,
+        preserveExisting: true
+      });
+      const report = buildWriteReportSummary(requestId, session.previewVersion, writeResult.outcomes);
+
+      const targetFiles = normalizeTargetFiles(
+        options.targetFiles ?? writeResult.outcomes
+          .filter((outcome) => outcome.status === 'patched' || outcome.status === 'created')
+          .map((outcome) => outcome.targetPath)
+      );
+
+      const initialGuardrailResult = await runPostWriteLintTypeGuardrail({
+        commandRunner: options.commandRunner
+      });
+      const guardrail = await resolveLintTypeRetryEscalation({
+        requestId,
+        initialGuardrailResult,
+        targetFiles,
+        maxAttempts: 1,
+        applyScopedAutoFix: options.applyScopedAutoFix ?? (async (scopedTargetFiles) => ({
+          ok: false,
+          summary: `No scoped auto-fix configured for ${scopedTargetFiles.length} targetFiles.`
+        })),
+        rerunGuardrail: async () => runPostWriteLintTypeGuardrail({
+          commandRunner: options.commandRunner
+        })
+      });
+
+      if (guardrail.status === 'escalated') {
+        session.pendingGuardrailEscalation = guardrail.escalation;
+        session.updatedAt = this.now().toISOString();
+
+        this.emit(requestId, 'gate', 'guardrail_escalation_required', session.state, {
+          command: guardrail.escalation?.command,
+          topErrors: guardrail.escalation?.topErrors,
+          affectedFiles: guardrail.escalation?.affectedFiles,
+          attemptedFixSummary: guardrail.escalation?.attemptedFixSummary,
+          suggestedActions: guardrail.escalation?.suggestedActions
+        }, session.confidenceProfileId, session.decisionGate);
+
+        return {
+          ok: false,
+          requestId,
+          from: session.state,
+          errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
+          report,
+          guardrail,
+          escalation: guardrail.escalation
+        };
+      }
+
+      const transition = transitionState(session.state, 'completed');
+      if (!transition.ok) {
+        return {
+          ok: false,
+          requestId,
+          from: session.state,
+          errorCode: transition.errorCode
+        };
+      }
+
+      session.state = transition.to;
+      session.pendingGuardrailEscalation = undefined;
+      session.updatedAt = this.now().toISOString();
+
+      this.emit(requestId, 'gate', 'transition_applied', session.state, {
+        from: transition.from,
+        to: transition.to,
+        action: 'write_execute_guardrailed'
+      });
+
+      this.emit(requestId, 'ui', 'write_report_generated', session.state, {
+        previewVersion: session.previewVersion,
+        summary: report.summary,
+        skippedReasons: report.skippedReasons,
+        guardrailStatus: guardrail.status,
+        guardrailRetryAttempts: guardrail.retry.attempts
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: true,
+        requestId,
+        from: transition.from,
+        to: transition.to,
+        report,
+        guardrail
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown write failure';
