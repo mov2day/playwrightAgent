@@ -128,6 +128,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Participant and Pipeline Foundation | 3/3 | Complete | 2026-05-30 |
 | 2. Context Ingestion and Confidence Engine | 4/4 | Complete    | 2026-05-30 |
 | 3. Planning UX and Approval Gates | 3/3 | Complete | 2026-05-31 |
-| 4. Generation, Preview, and Safe File Writing | 0/5 | Not started | - |
+| 4. Generation, Preview, and Safe File Writing | 2/5 | In Progress|  |
 | 5. Execution, Retry Loop, and Audit Logging | 0/3 | Not started | - |
 | 6. Stabilization and v1 Readiness | 0/2 | Not started | - |
