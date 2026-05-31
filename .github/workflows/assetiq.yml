@@ -1,0 +1,37 @@
+name: Test Intelligence
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  assertiq:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: mov2day/assertiq@v0.1.4
+        with:
+          fail-below: C
+          post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
+          track-history: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Update badge on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npx @mov2day/assertiq --badge
+      - name: Commit badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assertiq-badge.svg assertiq-history.json
+          git diff --cached --quiet || git commit -m "chore(ci): update AssertIQ badge and history"
+          git push
