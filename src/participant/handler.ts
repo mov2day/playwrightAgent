@@ -19,6 +19,7 @@ import { buildScenarioPlan, type RequirementScenarioInput } from '../pipeline/pl
 import { formatPlanChatSummary } from '../pipeline/planning/planSummary';
 import type { ActionTransitionResult, PipelineOrchestrator, StageEntryDecision } from '../pipeline/orchestrator';
 import type { PipelineState } from '../pipeline/stateMachine';
+import { createPreviewApproveAllAction } from '../ui/previewActions';
 import { parseSlashPlanInput } from './slashPlanParser';
 import { QUICK_ACTIONS, type QuickAction } from './actions';
 
@@ -580,6 +581,32 @@ export function handleGateFreeText(
     planBundle,
     undefined
   );
+}
+
+export function handlePreviewApproveAll(
+  requestId: string,
+  previewVersion: string,
+  deps: ParticipantHandlerDeps = {}
+): ActionTransitionResult {
+  const orchestrator = deps.orchestrator;
+  if (!orchestrator) {
+    return {
+      ok: false,
+      requestId,
+      from: 'initialized',
+      errorCode: 'UNKNOWN_REQUEST'
+    };
+  }
+
+  const now = deps.now ?? (() => new Date());
+  const action = createPreviewApproveAllAction(
+    requestId,
+    now().getTime(),
+    'chat',
+    previewVersion
+  );
+
+  return orchestrator.applyPreviewAction(requestId, action);
 }
 
 export function createParticipantRequestHandler(deps: ParticipantHandlerDeps = {}) {

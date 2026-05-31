@@ -1,10 +1,12 @@
 import type { EventSink } from '../adapters/eventSink';
 import { QUICK_ACTIONS, type QuickAction } from '../participant/actions';
+import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
 import { createPipelineEvent } from './events';
 import { computeApprovedScope, computeRegenerationTargets, type ApprovalScopeRecord, type RevisionCommentInput } from './planning/approvalScope';
 import type { ScenarioPlanRecord } from './planning/planContracts';
+import { PREVIEW_VERSION } from './preview/previewContracts';
 import { buildSkillManifest } from './skills/manifestBuilder';
 import {
   evaluateSkillQualityGate,
@@ -78,11 +80,17 @@ interface PipelineSession {
   revisionHistory: ReviewHistoryEntry[];
   globalComments: ReviewCommentRecord[];
   lastAckVersion: number;
+  previewVersion: string;
+  previewVersionCounter: number;
+  approvedPreviewVersion?: string;
 }
 
 export interface ReviewSnapshot {
   requestId: string;
   ackVersion: number;
+  previewVersion: string;
+  approvedPreviewVersion?: string;
+  writeApprovalRequired: boolean;
   approvedScenarioIds: string[];
   excludedScenarioIds: string[];
   approvedCount: number;
@@ -114,7 +122,13 @@ export interface ActionTransitionResult {
   requestId: string;
   from: PipelineState;
   to?: PipelineState;
-  errorCode?: 'UNKNOWN_REQUEST' | 'UNMAPPED_ACTION' | 'ILLEGAL_TRANSITION' | 'STAGE_ENTRY_BLOCKED';
+  errorCode?:
+    | 'UNKNOWN_REQUEST'
+    | 'UNMAPPED_ACTION'
+    | 'ILLEGAL_TRANSITION'
+    | 'STAGE_ENTRY_BLOCKED'
+    | 'PREVIEW_APPROVAL_REQUIRED'
+    | 'PREVIEW_VERSION_MISMATCH';
   stageEntry?: StageEntryDecision;
 }
 
@@ -157,6 +171,14 @@ function sanitizeReason(reason: string | undefined): string | undefined {
   return normalized ? normalized.slice(0, 400) : undefined;
 }
 
+function isContentChangingComment(classification: ReviewCommentRecord['classification']): boolean {
+  return classification === 'constraint' || classification === 'bug' || classification === 'new_context';
+}
+
+function hasCurrentPreviewApproval(session: PipelineSession): boolean {
+  return Boolean(session.approvedPreviewVersion) && session.approvedPreviewVersion === session.previewVersion;
+}
+
 export class PipelineOrchestrator {
   private readonly sessions = new Map<string, PipelineSession>();
 
@@ -196,7 +218,10 @@ export class PipelineOrchestrator {
       reviewRecordsByScenarioId: {},
       revisionHistory: [],
       globalComments: [],
-      lastAckVersion: 0
+      lastAckVersion: 0,
+      previewVersion: PREVIEW_VERSION,
+      previewVersionCounter: 1,
+      approvedPreviewVersion: undefined
     };
 
     this.sessions.set(requestId, session);
@@ -249,6 +274,82 @@ export class PipelineOrchestrator {
     }
 
     return this.buildReviewSnapshot(session);
+  }
+
+  setPreviewVersion(requestId: string, previewVersion: string): boolean {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return false;
+    }
+
+    const normalized = previewVersion.trim();
+    if (!normalized) {
+      return false;
+    }
+
+    if (session.previewVersion !== normalized) {
+      session.previewVersionCounter += 1;
+      session.previewVersion = normalized;
+      session.approvedPreviewVersion = undefined;
+      session.updatedAt = this.now().toISOString();
+
+      this.emit(requestId, 'ui', 'preview_version_set', session.state, {
+        previewVersion: session.previewVersion,
+        previewVersionCounter: session.previewVersionCounter,
+        approvalCleared: true
+      }, session.confidenceProfileId, session.decisionGate);
+    }
+
+    return true;
+  }
+
+  applyPreviewAction(requestId: string, action: PreviewActionEnvelope): ActionTransitionResult {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    if (action.requestId !== requestId || action.type !== 'preview.approve_all') {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'UNMAPPED_ACTION'
+      };
+    }
+
+    if (action.previewVersion !== session.previewVersion) {
+      this.emit(requestId, 'ui', 'preview_approval_mismatch', session.state, {
+        actionPreviewVersion: action.previewVersion,
+        expectedPreviewVersion: session.previewVersion
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'PREVIEW_VERSION_MISMATCH'
+      };
+    }
+
+    session.approvedPreviewVersion = action.previewVersion;
+    session.updatedAt = this.now().toISOString();
+
+    this.emit(requestId, 'ui', 'preview_approval_applied', session.state, {
+      approvedPreviewVersion: session.approvedPreviewVersion
+    }, session.confidenceProfileId, session.decisionGate);
+
+    return {
+      ok: true,
+      requestId,
+      from: session.state,
+      to: session.state
+    };
   }
 
   setConfidenceDecision(
@@ -401,6 +502,20 @@ export class PipelineOrchestrator {
       } else if (session.state === 'plan_approved') {
         targetState = 'awaiting_script_approval';
       } else if (session.state === 'script_approved') {
+        if (!hasCurrentPreviewApproval(session)) {
+          this.emit(requestId, 'gate', 'preview_approval_required', session.state, {
+            previewVersion: session.previewVersion,
+            approvedPreviewVersion: session.approvedPreviewVersion
+          }, session.confidenceProfileId, session.decisionGate);
+
+          return {
+            ok: false,
+            requestId,
+            from: session.state,
+            errorCode: 'PREVIEW_APPROVAL_REQUIRED'
+          };
+        }
+
         targetState = 'ready_to_write';
       }
     }
@@ -557,6 +672,7 @@ export class PipelineOrchestrator {
     }
 
     if (action.type === 'comment.add') {
+      const shouldInvalidatePreviewApproval = isContentChangingComment(action.classification);
       const comment: ReviewCommentRecord = {
         commentId: `${requestId}_${session.lastAckVersion + 1}`,
         target: action.target,
@@ -602,6 +718,19 @@ export class PipelineOrchestrator {
         reason: action.classification,
         timestamp: nowIso
       });
+
+      if (shouldInvalidatePreviewApproval) {
+        const previousVersion = session.previewVersion;
+        session.previewVersionCounter += 1;
+        session.previewVersion = `${PREVIEW_VERSION}.r${session.previewVersionCounter}`;
+        session.approvedPreviewVersion = undefined;
+
+        this.emit(requestId, 'ui', 'preview_approval_invalidated', session.state, {
+          reason: action.classification,
+          previousPreviewVersion: previousVersion,
+          previewVersion: session.previewVersion
+        }, session.confidenceProfileId, session.decisionGate);
+      }
     }
 
     session.lastAckVersion += 1;
@@ -641,6 +770,9 @@ export class PipelineOrchestrator {
     return {
       requestId: session.requestId,
       ackVersion: session.lastAckVersion,
+      previewVersion: session.previewVersion,
+      approvedPreviewVersion: session.approvedPreviewVersion,
+      writeApprovalRequired: !hasCurrentPreviewApproval(session),
       approvedScenarioIds: scope.approvedScenarioIds,
       excludedScenarioIds: scope.excludedScenarioIds,
       approvedCount: scope.approvedCount,

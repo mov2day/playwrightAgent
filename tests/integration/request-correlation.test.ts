@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryEventSink } from '../../src/adapters/eventSink';
-import { handlePlanCommand } from '../../src/participant/handler';
+import { handlePlanCommand, handlePreviewApproveAll } from '../../src/participant/handler';
 import { PipelineOrchestrator } from '../../src/pipeline/orchestrator';
 
 describe('request correlation across orchestrator events', () => {
@@ -26,11 +26,16 @@ describe('request correlation across orchestrator events', () => {
     const approvePlan = orchestrator.handleQuickAction(response.requestId, 'approve');
     const continueToScriptGate = orchestrator.handleQuickAction(response.requestId, 'continue');
     const approveScript = orchestrator.handleQuickAction(response.requestId, 'approve');
+    const approvePreview = handlePreviewApproveAll(response.requestId, 'preview.v1', {
+      orchestrator,
+      now
+    });
     const continueToWrite = orchestrator.handleQuickAction(response.requestId, 'continue');
 
     expect(approvePlan.ok).toBe(true);
     expect(continueToScriptGate.ok).toBe(true);
     expect(approveScript.ok).toBe(true);
+    expect(approvePreview.ok).toBe(true);
     expect(continueToWrite.ok).toBe(true);
 
     const scenarioId = response.planScenarios?.[0]?.scenarioId;

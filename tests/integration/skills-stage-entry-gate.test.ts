@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { InMemoryEventSink } from '../../src/adapters/eventSink';
 import { PipelineOrchestrator, type StageEntryGateEvaluator } from '../../src/pipeline/orchestrator';
-import { handlePlanCommand } from '../../src/participant/handler';
+import { handlePlanCommand, handlePreviewApproveAll } from '../../src/participant/handler';
 
 function createGateEvaluator(overrides: Partial<Record<'planning' | 'generation' | 'preview' | 'write', boolean>>): StageEntryGateEvaluator {
   return (stage) => {
@@ -75,6 +75,11 @@ describe('skills stage-entry gate', () => {
       stageEntryGateEvaluator: createGateEvaluator({ preview: true })
     });
     previewOrchestrator.startSession('req_stage_gate_2_preview', 'script_approved');
+    const previewApprove = handlePreviewApproveAll('req_stage_gate_2_preview', 'preview.v1', {
+      orchestrator: previewOrchestrator,
+      now
+    });
+    expect(previewApprove.ok).toBe(true);
     const previewEntry = previewOrchestrator.handleQuickAction('req_stage_gate_2_preview', 'continue');
     expect(previewEntry.ok).toBe(false);
     expect(previewEntry.stageEntry?.stage).toBe('preview');
