@@ -122,8 +122,12 @@ function evaluateLinkedFileIntegrity(manifest: SkillManifest): SkillQualityGateR
 }
 
 function evaluateArtifactHygiene(manifest: SkillManifest): SkillQualityGateReason[] {
+  const deniedPatternLeak = manifest.entries.some((entry) =>
+    /\.git\/|\/\.DS_Store$|\/\.temp-execution-[^/]+$/.test(entry.path)
+  );
+
   if (
-    manifest.deniedArtifacts.length === 0
+    !deniedPatternLeak
     && manifest.unreadableAllowlistEntries.length === 0
     && manifest.missingAllowlistEntries.length === 0
   ) {
@@ -134,8 +138,11 @@ function evaluateArtifactHygiene(manifest: SkillManifest): SkillQualityGateReaso
     code: 'artifact_hygiene_failed',
     check: 'artifact_hygiene',
     message: [
+      deniedPatternLeak
+        ? 'denylist artifact leaked into allowlisted manifest entries'
+        : '',
       manifest.deniedArtifacts.length > 0
-        ? `denied artifacts=${manifest.deniedArtifacts.length}`
+        ? `denylist artifacts excluded=${manifest.deniedArtifacts.length}`
         : '',
       manifest.unreadableAllowlistEntries.length > 0
         ? `unreadable entries=${manifest.unreadableAllowlistEntries.length}`
@@ -195,4 +202,3 @@ export function evaluateSkillQualityGate(
     reasons
   };
 }
-

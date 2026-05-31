@@ -45,38 +45,47 @@ describe('skills stage-entry gate', () => {
   });
 
   it('blocks generation, preview, and write stage entries with fail-closed guard results', () => {
-    const sink = new InMemoryEventSink();
     const now = () => new Date('2026-06-01T00:00:00.000Z');
-    const orchestrator = new PipelineOrchestrator({
-      eventSink: sink,
+    const generationOrchestrator = new PipelineOrchestrator({
+      eventSink: new InMemoryEventSink(),
       now,
       stageEntryGateEvaluator: createGateEvaluator({
-        generation: true,
-        preview: true,
-        write: true
+        generation: true
       })
     });
 
-    orchestrator.startSession('req_stage_gate_2', 'initialized');
-    const planningTransition = orchestrator.transition('req_stage_gate_2', 'awaiting_plan_approval', 'confidence_gate_entered');
+    generationOrchestrator.startSession('req_stage_gate_2_generation', 'initialized');
+    const planningTransition = generationOrchestrator.transition(
+      'req_stage_gate_2_generation',
+      'awaiting_plan_approval',
+      'confidence_gate_entered'
+    );
     expect(planningTransition.ok).toBe(true);
-    expect(orchestrator.handleQuickAction('req_stage_gate_2', 'approve').ok).toBe(true);
-    expect(orchestrator.getSession('req_stage_gate_2')?.state).toBe('plan_approved');
+    expect(generationOrchestrator.handleQuickAction('req_stage_gate_2_generation', 'approve').ok).toBe(true);
+    expect(generationOrchestrator.getSession('req_stage_gate_2_generation')?.state).toBe('plan_approved');
 
-    const generationEntry = orchestrator.handleQuickAction('req_stage_gate_2', 'continue');
+    const generationEntry = generationOrchestrator.handleQuickAction('req_stage_gate_2_generation', 'continue');
     expect(generationEntry.ok).toBe(false);
     expect(generationEntry.errorCode).toBe('STAGE_ENTRY_BLOCKED');
     expect(generationEntry.stageEntry?.stage).toBe('generation');
 
-    orchestrator.transition('req_stage_gate_2', 'awaiting_script_approval', 'manual_override_for_test');
-    orchestrator.handleQuickAction('req_stage_gate_2', 'approve');
-
-    const previewEntry = orchestrator.handleQuickAction('req_stage_gate_2', 'continue');
+    const previewOrchestrator = new PipelineOrchestrator({
+      eventSink: new InMemoryEventSink(),
+      now,
+      stageEntryGateEvaluator: createGateEvaluator({ preview: true })
+    });
+    previewOrchestrator.startSession('req_stage_gate_2_preview', 'script_approved');
+    const previewEntry = previewOrchestrator.handleQuickAction('req_stage_gate_2_preview', 'continue');
     expect(previewEntry.ok).toBe(false);
     expect(previewEntry.stageEntry?.stage).toBe('preview');
 
-    orchestrator.transition('req_stage_gate_2', 'ready_to_write', 'manual_override_for_test');
-    const writeEntry = orchestrator.transition('req_stage_gate_2', 'completed', 'write_stage_entry');
+    const writeOrchestrator = new PipelineOrchestrator({
+      eventSink: new InMemoryEventSink(),
+      now,
+      stageEntryGateEvaluator: createGateEvaluator({ write: true })
+    });
+    writeOrchestrator.startSession('req_stage_gate_2_write', 'ready_to_write');
+    const writeEntry = writeOrchestrator.transition('req_stage_gate_2_write', 'completed', 'write_stage_entry');
 
     expect(writeEntry.ok).toBe(false);
     expect(writeEntry.errorCode).toBe('STAGE_ENTRY_BLOCKED');
@@ -100,6 +109,8 @@ describe('skills stage-entry gate', () => {
     });
 
     expect(response.state).toBe('initialized');
+    expect(response.stageEntryDecision?.stage).toBe('planning');
+    expect(response.availableActions).toEqual(['approve', 'reject', 'continue', 'cancel']);
     const blockedEvents = sink.getEvents().filter((event) => event.action === 'stage_entry_blocked');
     expect(blockedEvents.length).toBeGreaterThan(0);
   });

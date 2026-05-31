@@ -1,12 +1,42 @@
 import type { EventSink } from '../adapters/eventSink';
-import type { QuickAction } from '../participant/actions';
+import { QUICK_ACTIONS, type QuickAction } from '../participant/actions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
 import { createPipelineEvent } from './events';
 import { computeApprovedScope, computeRegenerationTargets, type ApprovalScopeRecord, type RevisionCommentInput } from './planning/approvalScope';
 import type { ScenarioPlanRecord } from './planning/planContracts';
+import { buildSkillManifest } from './skills/manifestBuilder';
+import {
+  evaluateSkillQualityGate,
+  type SkillGateStage,
+  type SkillQualityGateReason,
+  type SkillQualityGateResult
+} from './skills/qualityGate';
 import type { PipelineState, TransitionResult } from './stateMachine';
 import { transitionState } from './stateMachine';
+
+const PRE_STAGE_ENTRY_BY_TARGET_STATE: Partial<Record<PipelineState, SkillGateStage>> = {
+  awaiting_plan_approval: 'planning',
+  awaiting_script_approval: 'generation',
+  ready_to_write: 'preview',
+  completed: 'write'
+};
+
+const STAGE_ENTRY_ACTIONS: readonly QuickAction[] = QUICK_ACTIONS;
+
+function buildFailClosedManifestUnavailable(stage: SkillGateStage, message: string): SkillQualityGateResult {
+  return {
+    stage,
+    blocked: true,
+    fail_closed: true,
+    requires_user_decision: true,
+    reasons: [{
+      code: 'manifest_unavailable',
+      check: 'manifest',
+      message
+    }]
+  };
+}
 
 export interface ReviewCommentRecord {
   commentId: string;
@@ -65,6 +95,18 @@ export interface ReviewSnapshot {
 export interface OrchestratorDeps {
   eventSink: EventSink;
   now?: () => Date;
+  rootDir?: string;
+  stageEntryGateEvaluator?: StageEntryGateEvaluator;
+}
+
+export interface StageEntryDecision {
+  stage: SkillGateStage;
+  blocked: boolean;
+  fail_closed: boolean;
+  requires_user_decision: boolean;
+  reasons: SkillQualityGateReason[];
+  availableActions: readonly QuickAction[];
+  manifest_hash?: string;
 }
 
 export interface ActionTransitionResult {
@@ -72,13 +114,16 @@ export interface ActionTransitionResult {
   requestId: string;
   from: PipelineState;
   to?: PipelineState;
-  errorCode?: 'UNKNOWN_REQUEST' | 'UNMAPPED_ACTION' | 'ILLEGAL_TRANSITION';
+  errorCode?: 'UNKNOWN_REQUEST' | 'UNMAPPED_ACTION' | 'ILLEGAL_TRANSITION' | 'STAGE_ENTRY_BLOCKED';
+  stageEntry?: StageEntryDecision;
 }
 
 export interface ReviewActionResult extends ActionTransitionResult {
   ackVersion?: number;
   reviewSnapshot?: ReviewSnapshot;
 }
+
+export type StageEntryGateEvaluator = (stage: SkillGateStage) => SkillQualityGateResult;
 
 function toScopeRecord(record: ScenarioReviewRecord): ApprovalScopeRecord {
   return {
@@ -119,9 +164,25 @@ export class PipelineOrchestrator {
 
   private readonly now: () => Date;
 
+  private readonly rootDir: string;
+
+  private readonly stageEntryGateEvaluator: StageEntryGateEvaluator;
+
   constructor(deps: OrchestratorDeps) {
     this.eventSink = deps.eventSink;
     this.now = deps.now ?? (() => new Date());
+    this.rootDir = deps.rootDir ?? process.cwd();
+    this.stageEntryGateEvaluator = deps.stageEntryGateEvaluator ?? ((stage) => {
+      try {
+        const manifest = buildSkillManifest({ rootDir: this.rootDir });
+        return evaluateSkillQualityGate(manifest, stage);
+      } catch (error) {
+        const message = error instanceof Error
+          ? error.message
+          : 'Skill manifest build failed unexpectedly.';
+        return buildFailClosedManifestUnavailable(stage, message);
+      }
+    });
   }
 
   startSession(requestId: string, initialState: PipelineState = 'initialized'): PipelineSession {
@@ -258,6 +319,38 @@ export class PipelineOrchestrator {
       };
     }
 
+    const preStage = PRE_STAGE_ENTRY_BY_TARGET_STATE[to];
+    if (preStage) {
+      const stageEntry = this.evaluatePreStageGuard(preStage);
+      if (stageEntry.blocked || stageEntry.fail_closed || stageEntry.requires_user_decision) {
+        this.emit(requestId, 'gate', 'stage_entry_blocked', session.state, {
+          stage: stageEntry.stage,
+          blocked: stageEntry.blocked,
+          fail_closed: stageEntry.fail_closed,
+          requires_user_decision: stageEntry.requires_user_decision,
+          reasonCodes: stageEntry.reasons.map((reason) => reason.code),
+          action
+        });
+
+        return {
+          ok: false,
+          requestId,
+          from: session.state,
+          errorCode: 'STAGE_ENTRY_BLOCKED',
+          stageEntry
+        };
+      }
+
+      this.emit(requestId, 'gate', 'stage_entry_allowed', session.state, {
+        stage: stageEntry.stage,
+        blocked: stageEntry.blocked,
+        fail_closed: stageEntry.fail_closed,
+        requires_user_decision: stageEntry.requires_user_decision,
+        manifest_hash: stageEntry.manifest_hash,
+        action
+      });
+    }
+
     session.state = to;
     session.updatedAt = this.now().toISOString();
 
@@ -325,6 +418,19 @@ export class PipelineOrchestrator {
     }
 
     return this.transition(requestId, targetState, action);
+  }
+
+  private evaluatePreStageGuard(stage: SkillGateStage): StageEntryDecision {
+    const gateResult = this.stageEntryGateEvaluator(stage);
+    return {
+      stage,
+      blocked: gateResult.blocked,
+      fail_closed: gateResult.fail_closed,
+      requires_user_decision: gateResult.requires_user_decision,
+      reasons: [...gateResult.reasons],
+      availableActions: [...STAGE_ENTRY_ACTIONS],
+      manifest_hash: gateResult.manifest_hash
+    };
   }
 
   applyScenarioAction(requestId: string, action: ReviewActionEnvelope): ReviewActionResult {

@@ -17,7 +17,7 @@ import type { PlanReviewBundle, ScenarioPlanRecord } from '../pipeline/planning/
 import { buildPlanReviewBundle } from '../pipeline/planning/scenarioGrouping';
 import { buildScenarioPlan, type RequirementScenarioInput } from '../pipeline/planning/scenarioMapper';
 import { formatPlanChatSummary } from '../pipeline/planning/planSummary';
-import type { PipelineOrchestrator } from '../pipeline/orchestrator';
+import type { ActionTransitionResult, PipelineOrchestrator, StageEntryDecision } from '../pipeline/orchestrator';
 import type { PipelineState } from '../pipeline/stateMachine';
 import { parseSlashPlanInput } from './slashPlanParser';
 import { QUICK_ACTIONS, type QuickAction } from './actions';
@@ -81,6 +81,7 @@ export interface PlanCommandResponse {
   acceptsFreeText: boolean;
   freeTextPurpose: FreeTextPurpose;
   explainability: ConfidenceExplainability;
+  stageEntryDecision?: StageEntryDecision;
   planSummary?: string;
   planScenarios?: readonly ScenarioPlanRecord[];
 }
@@ -270,27 +271,38 @@ function toMessage(mode: PlanMode, gate: ConfidenceGate): string {
   return 'Confidence is above 70. Continuing without manual confidence gate.';
 }
 
-function syncConfidenceGateState(orchestrator: PipelineOrchestrator, requestId: string, gate: ConfidenceGate): void {
+function syncConfidenceGateState(
+  orchestrator: PipelineOrchestrator,
+  requestId: string,
+  gate: ConfidenceGate
+): ActionTransitionResult | undefined {
   const session = orchestrator.getSession(requestId);
   if (!session) {
-    return;
+    return undefined;
   }
 
   if (gate === 'reject') {
-    orchestrator.transition(requestId, 'cancelled', 'confidence_reject');
-    return;
+    return orchestrator.transition(requestId, 'cancelled', 'confidence_reject');
   }
 
   if (session.state === 'initialized') {
-    orchestrator.transition(requestId, 'awaiting_plan_approval', 'confidence_gate_entered');
+    const planningEntry = orchestrator.transition(requestId, 'awaiting_plan_approval', 'confidence_gate_entered');
+    if (!planningEntry.ok) {
+      return planningEntry;
+    }
   }
 
   if (gate === 'continue') {
     const current = orchestrator.getSession(requestId);
     if (current?.state === 'awaiting_plan_approval') {
-      orchestrator.transition(requestId, 'plan_approved', 'confidence_auto_continue');
+      const autoContinue = orchestrator.transition(requestId, 'plan_approved', 'confidence_auto_continue');
+      if (!autoContinue.ok) {
+        return autoContinue;
+      }
     }
   }
+
+  return undefined;
 }
 
 function buildConfidenceContext(
@@ -318,9 +330,14 @@ function buildResponse(
   state: PipelineState | undefined,
   decision: ReturnType<typeof computeConfidenceDecision>,
   explainability: ConfidenceExplainability,
-  planBundle: PlanReviewBundle | undefined
+  planBundle: PlanReviewBundle | undefined,
+  stageEntryDecision?: StageEntryDecision
 ): PlanCommandResponse {
   const planSummary = planBundle ? formatPlanChatSummary(planBundle) : undefined;
+  const stageEntryWarnings = stageEntryDecision
+    ? stageEntryDecision.reasons.map((reason) => `${reason.code}: ${reason.message}`)
+    : [];
+  const responseWarnings = [...warnings, ...stageEntryWarnings];
 
   return {
     requestId,
@@ -329,14 +346,17 @@ function buildResponse(
     ticketId,
     message: toMessage(mode, decision.gate),
     userContext,
-    warnings,
-    availableActions: CONFIDENCE_GATE_ACTIONS[decision.gate],
+    warnings: responseWarnings,
+    availableActions: stageEntryDecision
+      ? [...QUICK_ACTIONS]
+      : CONFIDENCE_GATE_ACTIONS[decision.gate],
     confidenceScore: decision.finalScore,
     decisionGate: decision.gate,
     confidenceProfileId: decision.profileId,
     acceptsFreeText: decision.gate === 'approval_required',
     freeTextPurpose: 'additional_context_or_instruction',
     explainability,
+    stageEntryDecision,
     planSummary,
     planScenarios: planBundle?.flatScenarios
   };
@@ -401,10 +421,11 @@ export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps
     userContextParts
   });
 
+  let stageEntryTransition: ActionTransitionResult | undefined;
   if (deps.orchestrator) {
     deps.orchestrator.startSession(requestContext.requestId, 'initialized');
     deps.orchestrator.setConfidenceDecision(requestContext.requestId, decision.profileId, decision.gate);
-    syncConfidenceGateState(deps.orchestrator, requestContext.requestId, decision.gate);
+    stageEntryTransition = syncConfidenceGateState(deps.orchestrator, requestContext.requestId, decision.gate);
   }
 
   const activeSession = deps.orchestrator?.getSession(requestContext.requestId);
@@ -431,7 +452,8 @@ export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps
     activeSession?.state,
     decision,
     explainability,
-    planBundle
+    planBundle,
+    stageEntryTransition?.stageEntry
   );
 }
 
@@ -480,7 +502,8 @@ export function handleGateFreeText(
       existingSession?.state,
       decision,
       explainability,
-      planBundle
+      planBundle,
+      undefined
     );
   }
 
@@ -554,7 +577,8 @@ export function handleGateFreeText(
     activeSession?.state,
     decision,
     explainability,
-    planBundle
+    planBundle,
+    undefined
   );
 }
 
