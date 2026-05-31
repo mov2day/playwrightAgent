@@ -17,6 +17,7 @@ import {
 
 import type { ReviewActionEnvelope } from './reviewActions';
 import type { ReviewCommentEntry, ReviewGroupView, ReviewScenarioView, ReviewTabId, ReviewViewModel } from './reviewModel';
+import type { PreviewViewModel } from './previewModel';
 
 export const REVIEW_THEME_COLORS = {
   dominant: '#F7F5EE',
@@ -352,4 +353,38 @@ export function ReviewApp({ model, dispatch }: ReviewAppProps) {
 
 export function renderReviewAppToHtml(model: ReviewViewModel): string {
   return renderToStaticMarkup(<ReviewApp model={model} />);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+export function renderPreviewPanelMarkup(previewModel: PreviewViewModel): string {
+  const previewSummary = previewModel.previewSummary;
+  const diffMarkup = previewModel.fileDiffs
+    .map((fileDiff) => [
+      '<article class="preview-file-card">',
+      `  <h3>${escapeHtml(fileDiff.path)}</h3>`,
+      `  <p data-change-type="${escapeHtml(fileDiff.changeType)}">${escapeHtml(fileDiff.changeType)} | +${fileDiff.addedLineCount} / -${fileDiff.removedLineCount}</p>`,
+      `  <pre data-field="unifiedPatch">${escapeHtml(fileDiff.unifiedPatch)}</pre>`,
+      '</article>'
+    ].join('\n'))
+    .join('\n');
+
+  return [
+    '<section class="preview-panel">',
+    `  <h2 data-preview-version="${escapeHtml(previewModel.previewVersion)}">Structured summary</h2>`,
+    `  <p data-summary="total">Files: ${previewSummary.totalFiles}</p>`,
+    `  <p data-summary="adds">Added files: ${previewSummary.addedFiles}</p>`,
+    `  <p data-summary="mods">Modified files: ${previewSummary.modifiedFiles}</p>`,
+    `  <p data-summary="dels">Deleted files: ${previewSummary.deletedFiles}</p>`,
+    `  <p data-summary="line-delta">Line delta: +${previewSummary.totalAddedLines} / -${previewSummary.totalRemovedLines}</p>`,
+    diffMarkup,
+    '</section>'
+  ].join('\n');
 }
