@@ -1,0 +1,118 @@
+import { describe, expect, it } from 'vitest';
+
+import type { LocalToolCommandResult } from '../../src/adapters/localToolRunner';
+import {
+  createScopedRunRequest,
+  type ScopedRunRequest
+} from '../../src/pipeline/execution/contracts';
+import { executeScopedRun } from '../../src/pipeline/execution/scopedRunExecutor';
+
+function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): LocalToolCommandResult {
+  return {
+    ok: true,
+    command: 'npx',
+    args: ['playwright', 'test', '--reporter=json'],
+    exitCode: 0,
+    stdout: '{"status":"passed"}',
+    stderr: '',
+    timedOut: false,
+    ...overrides
+  };
+}
+
+describe('execution run flow', () => {
+  it('emits execution_command_preview before execution_run_started for generated/updated scope', async () => {
+    const events: string[] = [];
+    const runs: Array<{ command: string; args: string[] }> = [];
+    const request = createScopedRunRequest({
+      requestId: 'req_execution_1',
+      generatedOrUpdatedTargets: [
+        'tests/e2e/checkout.spec.ts',
+        'tests/e2e/auth.spec.ts',
+        'tests/e2e/auth.spec.ts'
+      ]
+    });
+
+    const result = await executeScopedRun(request, {
+      commandRunner: async (command, args) => {
+        runs.push({ command, args });
+        return makeCommandResult({ command, args });
+      },
+      emitEvent: (event) => {
+        events.push(event.action);
+      },
+      now: () => new Date('2026-05-31T05:00:00.000Z')
+    });
+
+    expect(result.scopeMode).toBe('generated_or_updated');
+    expect(result.targets).toEqual([
+      'tests/e2e/auth.spec.ts',
+      'tests/e2e/checkout.spec.ts'
+    ]);
+    expect(result.commandPreview.command).toBe('npx');
+    expect(result.commandPreview.args).toEqual([
+      'playwright',
+      'test',
+      'tests/e2e/auth.spec.ts',
+      'tests/e2e/checkout.spec.ts',
+      '--reporter=json'
+    ]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toEqual({
+      command: 'npx',
+      args: [
+        'playwright',
+        'test',
+        'tests/e2e/auth.spec.ts',
+        'tests/e2e/checkout.spec.ts',
+        '--reporter=json'
+      ]
+    });
+    expect(events).toContain('execution_command_preview');
+    expect(events).toContain('execution_run_started');
+    expect(events.indexOf('execution_command_preview')).toBeLessThan(events.indexOf('execution_run_started'));
+  });
+
+  it('runs full suite only with explicit full_suite_opt_in scopeMode', async () => {
+    const scoped: ScopedRunRequest = createScopedRunRequest({
+      requestId: 'req_execution_2',
+      generatedOrUpdatedTargets: ['tests/e2e/auth.spec.ts']
+    });
+    const fullSuite = createScopedRunRequest({
+      requestId: 'req_execution_3',
+      generatedOrUpdatedTargets: ['tests/e2e/auth.spec.ts'],
+      scopeMode: 'full_suite_opt_in'
+    });
+
+    const scopedResult = await executeScopedRun(scoped, {
+      commandRunner: async (command, args) => makeCommandResult({ command, args })
+    });
+    const fullSuiteResult = await executeScopedRun(fullSuite, {
+      commandRunner: async (command, args) => makeCommandResult({ command, args })
+    });
+
+    expect(scopedResult.commandPreview.args).toEqual([
+      'playwright',
+      'test',
+      'tests/e2e/auth.spec.ts',
+      '--reporter=json'
+    ]);
+    expect(fullSuiteResult.commandPreview.args).toEqual([
+      'playwright',
+      'test',
+      '--reporter=json'
+    ]);
+  });
+
+  it('fails closed when generated/updated scope has no targets', async () => {
+    const result = await executeScopedRun(createScopedRunRequest({
+      requestId: 'req_execution_4',
+      generatedOrUpdatedTargets: []
+    }), {
+      commandRunner: async (command, args) => makeCommandResult({ command, args })
+    });
+
+    expect(result.result.ok).toBe(false);
+    expect(result.result.error).toContain('No generated/updated targets available for scoped execution.');
+  });
+});
