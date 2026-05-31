@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildSkillManifest } from '../../src/pipeline/skills/manifestBuilder';
+import { evaluateSkillQualityGate } from '../../src/pipeline/skills/qualityGate';
 
 const TEMP_DIRS: string[] = [];
 
@@ -105,5 +106,59 @@ describe('skills manifest builder', () => {
     const afterAllowlistedChange = buildSkillManifest({ rootDir });
 
     expect(afterAllowlistedChange.hash).not.toBe(afterUnlistedChange.hash);
+  });
+});
+
+describe('skills quality gate', () => {
+  it('passes when schema, linked-file integrity, and hygiene checks succeed', () => {
+    const rootDir = makeTempRepo({
+      ...buildSkillFixture(),
+      'skills/playwright-skill/.DS_Store': '',
+      'skills/playwright-skill/.temp-execution-100.js': '',
+      'skills/playwright-skill/.git/config': ''
+    });
+
+    fs.rmSync(path.join(rootDir, 'skills/playwright-skill/.DS_Store'), { force: true });
+    fs.rmSync(path.join(rootDir, 'skills/playwright-skill/.temp-execution-100.js'), { force: true });
+    fs.rmSync(path.join(rootDir, 'skills/playwright-skill/.git/config'), { force: true });
+
+    const manifest = buildSkillManifest({ rootDir });
+    const result = evaluateSkillQualityGate(manifest, 'generation');
+
+    expect(result.blocked).toBe(false);
+    expect(result.requires_user_decision).toBe(false);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it('fails closed when manifest evidence is unavailable', () => {
+    const result = evaluateSkillQualityGate(undefined, 'planning');
+
+    expect(result.blocked).toBe(true);
+    expect(result.fail_closed).toBe(true);
+    expect(result.requires_user_decision).toBe(true);
+    expect(result.reasons.some((reason) => reason.code === 'manifest_unavailable')).toBe(true);
+  });
+
+  it('fails closed with structured reasons when frontmatter, linked files, or hygiene fail', () => {
+    const rootDir = makeTempRepo({
+      ...buildSkillFixture(),
+      'skills/playwright-skill/SKILL.md': '# no frontmatter and broken links',
+      'skills/playwright-skill/SCREENPLAY_PATTERN_SKILL.md': '# removed from integrity set'
+    });
+    fs.rmSync(path.join(rootDir, 'skills/playwright-skill/SCREENPLAY_PATTERN_SKILL.md'), { force: true });
+
+    const manifest = buildSkillManifest({ rootDir });
+    const result = evaluateSkillQualityGate(manifest, 'preview');
+
+    expect(result.blocked).toBe(true);
+    expect(result.fail_closed).toBe(true);
+    expect(result.requires_user_decision).toBe(true);
+    expect(result.reasons.map((reason) => reason.code)).toEqual(
+      expect.arrayContaining([
+        'frontmatter_schema_invalid',
+        'linked-file-integrity_failed',
+        'artifact_hygiene_failed'
+      ])
+    );
   });
 });
