@@ -23,6 +23,10 @@ function toGenerationScenario(record: ScenarioPlanRecord): GenerationScenarioRec
   });
 }
 
+function isApprovedRecord(record: ScenarioPlanRecord | undefined): record is ScenarioPlanRecord {
+  return record !== undefined && record.approvalState === 'approved';
+}
+
 export function buildGenerationWorkset(
   snapshot: ReviewSnapshot,
   planRecords: readonly ScenarioPlanRecord[],
@@ -40,7 +44,7 @@ export function buildGenerationWorkset(
 
   const scenarios = approvedScenarioIds
     .map((scenarioId) => recordsByScenarioId.get(scenarioId))
-    .filter((record): record is ScenarioPlanRecord => Boolean(record) && record.approvalState === 'approved')
+    .filter(isApprovedRecord)
     .map((record) => toGenerationScenario(record));
 
   const excludedFromPlanRecords = planRecords
