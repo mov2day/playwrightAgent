@@ -57,8 +57,8 @@
 
 ### Execution and Feedback Loop
 
-- [ ] **RUN-01**: User can trigger run of newly created/updated Playwright tests from workflow.
-- [ ] **RUN-02**: Agent reports pass/fail results with enough detail to distinguish likely test vs app failures.
+- [x] **RUN-01**: User can trigger run of newly created/updated Playwright tests from workflow.
+- [x] **RUN-02**: Agent reports pass/fail results with enough detail to distinguish likely test vs app failures.
 - [ ] **RUN-03**: On failures, agent attempts one controlled fix cycle and then asks user for next action if unresolved.
 - [x] **RUN-04**: Agent supports quick chat actions (`approve`, `reject`, `continue`, `cancel`) at gate stages.
 - [x] **RUN-05**: User freeform comments can trigger regeneration and return to approval gates.
@@ -125,8 +125,8 @@
 | GEN-04 | Phase 4 | Pending |
 | GEN-05 | Phase 4 | Pending |
 | GEN-06 | Phase 4 | Pending |
-| RUN-01 | Phase 5 | Pending |
-| RUN-02 | Phase 5 | Pending |
+| RUN-01 | Phase 5 | Complete |
+| RUN-02 | Phase 5 | Complete |
 | RUN-03 | Phase 5 | Pending |
 | RUN-04 | Phase 3 | Complete |
 | RUN-05 | Phase 3 | Complete |

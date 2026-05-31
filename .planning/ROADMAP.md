@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Participant and Pipeline Foundation** - Build VS Code participant entry, slash-command parsing, and orchestration state machine.
 - [x] **Phase 2: Context Ingestion and Confidence Engine** - Implement repo analysis + secure Jira/Confluence fetch + confidence scoring gates. (completed 2026-05-30)
 - [x] **Phase 3: Planning UX and Approval Gates** - Deliver chat + MUI webview plan presentation with per-scenario and bulk approvals. (completed 2026-05-31)
-- [ ] **Phase 4: Generation, Preview, and Safe File Writing** - Generate approved scripts only, enforce preview gate, and perform surgical writes.
+- [x] **Phase 4: Generation, Preview, and Safe File Writing** - Generate approved scripts only, enforce preview gate, and perform surgical writes. (completed 2026-05-31)
 - [ ] **Phase 5: Execution, Retry Loop, and Audit Logging** - Run generated tests, controlled fix loop, and full AI interaction audit trail.
 - [ ] **Phase 6: Stabilization and v1 Readiness** - Hardening, verification, and documentation closeout for release-quality v1.
 
@@ -86,7 +86,7 @@ Plans:
 - [x] 04-02-PLAN.md — Skill quality-gate and mandatory stage-entry fail-closed enforcement
 - [x] 04-03-PLAN.md — Canonical preview bundle + dual-surface rendering
 - [x] 04-04-PLAN.md — Global preview approval gate + surgical writer core
-- [ ] 04-05-PLAN.md — Post-write lint/type guardrail, retry, and escalation gate
+- [x] 04-05-PLAN.md — Post-write lint/type guardrail, retry, and escalation gate
 
 ### Phase 5: Execution, Retry Loop, and Audit Logging
 **Goal**: Close loop with execution outcomes, controlled remediation, and full auditability.
@@ -99,7 +99,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Scoped run executor and report summarizer
+- [x] 05-01: Scoped run executor and report summarizer
 - [ ] 05-02: One-shot repair loop with escalation controls
 - [ ] 05-03: Structured AI interaction audit log pipeline
 
@@ -128,6 +128,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Participant and Pipeline Foundation | 3/3 | Complete | 2026-05-30 |
 | 2. Context Ingestion and Confidence Engine | 4/4 | Complete    | 2026-05-30 |
 | 3. Planning UX and Approval Gates | 3/3 | Complete | 2026-05-31 |
-| 4. Generation, Preview, and Safe File Writing | 2/5 | In Progress|  |
+| 4. Generation, Preview, and Safe File Writing | 5/5 | Complete | 2026-05-31 |
 | 5. Execution, Retry Loop, and Audit Logging | 0/3 | Not started | - |
 | 6. Stabilization and v1 Readiness | 0/2 | Not started | - |
