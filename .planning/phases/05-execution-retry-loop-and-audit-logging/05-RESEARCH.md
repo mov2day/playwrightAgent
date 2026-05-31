@@ -305,26 +305,23 @@ const logger = pino({
 | A5 | Misclassification root cause is over-reliance on exit code without structured result context. | Common Pitfalls / Pitfall 2 | Classifier quality work could target wrong failure signals. |
 | A6 | Redaction leakage root cause is inconsistent or post-write sanitization. | Common Pitfalls / Pitfall 3 | Mitigation may not address actual leakage path. |
 | A7 | Escalation bypass root cause is missing transition guard for blocked state. | Common Pitfalls / Pitfall 4 | Guard hardening may focus wrong module. |
-| A8 | Recommended retention decision shape is `N` days + max file size + cleanup in Phase 6. | Open Questions / Q1 | Later phases may need different operational policy. |
-| A9 | Contract tests with representative signatures are best first step for bucket precedence validation. | Open Questions / Q2 | Could delay better telemetry-driven classification strategy. |
-| A10 | Execution root should be explicit contract field validated before launch. | Open Questions / Q3 | If invocation model differs, run command may still resolve wrong toolchain. |
+| A8 | Audit retention policy resolved to `retentionDays=14`, `maxFileBytes=5_000_000`, and rotate-on-threshold with cleanup automation deferred to Phase 6. | Open Questions (RESOLVED) / Q1 | Operations policy may evolve in later phases based on audit volume. |
+| A9 | Classifier precedence resolved to deterministic ordered rules with contract tests: `environment_or_tooling` -> `application_behavior` -> `test_authoring`. | Open Questions (RESOLVED) / Q2 | Signature set may need extension as failure corpus grows. |
+| A10 | Execution root resolved as explicit execution contract field (`executionCwd`) validated before launch. | Open Questions (RESOLVED) / Q3 | If workspace metadata is missing, run must fail closed with install/root guidance. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Audit retention and rotation policy**
-   - What we know: Phase locks persistent per-request files and schema discretion, but no retention rule is set. [VERIFIED: .planning/phases/05-execution-retry-loop-and-audit-logging/05-CONTEXT.md]
-   - What's unclear: File retention duration, max size thresholds, compaction/rotation behavior.
-   - Recommendation: Lock retention in planning (`N` days + max file size) and add cleanup task in Phase 6. [ASSUMED]
+1. **Audit retention and rotation policy — RESOLVED**
+   - **Decision:** Phase 5 uses explicit bounded defaults in code: `retentionDays=14`, `maxFileBytes=5_000_000`, and rotate-audit-file guard on append threshold. Cleanup automation is scheduled for Phase 6, but Phase 5 persistence is bounded immediately. [VERIFIED: .planning/phases/05-execution-retry-loop-and-audit-logging/05-CONTEXT.md]
+   - **Planning impact:** Encoded in `05-03-PLAN.md` Task 1 action/acceptance criteria.
 
-2. **Classifier rule source of truth**
-   - What we know: Buckets are fixed by decision D-04. [VERIFIED: .planning/phases/05-execution-retry-loop-and-audit-logging/05-CONTEXT.md]
-   - What's unclear: Exact deterministic rule precedence for mixed-signal failures.
-   - Recommendation: Add contract tests with representative signatures before implementation merge. [ASSUMED]
+2. **Classifier rule source of truth — RESOLVED**
+   - **Decision:** Classifier uses deterministic precedence rules with explicit `bucketReason` output: first match `environment_or_tooling`, else `application_behavior`, else `test_authoring` fallback. Mixed-signal failures resolve by precedence order, not nondeterministic heuristics. [VERIFIED: .planning/phases/05-execution-retry-loop-and-audit-logging/05-CONTEXT.md]
+   - **Planning impact:** Encoded in `05-01-PLAN.md` Task 2 behavior/acceptance criteria and contract-test requirement.
 
-3. **Execution environment target root**
-   - What we know: Extension repo currently has no root `@playwright/test` install; `npx playwright` resolves `1.40.0` locally in this machine context. [VERIFIED: `npm ls @playwright/test --depth=0`, `npx --no-install playwright --version` outputs]
-   - What's unclear: Whether Phase 5 command should run in workspace-under-test root vs extension root in all invocation paths.
-   - Recommendation: Make run root explicit in execution contract and validate before command launch. [ASSUMED]
+3. **Execution environment target root — RESOLVED**
+   - **Decision:** Execution contract must carry `executionCwd` and validate it before launch; default is workspace-under-test root from request context (not extension host root). If Playwright runtime is unavailable in that root, run fails closed with actionable install/root guidance. [VERIFIED: `npm ls @playwright/test --depth=0`, `npx --no-install playwright --version` outputs]
+   - **Planning impact:** Encoded in `05-01-PLAN.md` Task 1 contract/executor work and scoped command preview flow.
 
 ## Environment Availability
 
