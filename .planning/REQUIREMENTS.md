@@ -50,7 +50,7 @@
 
 - [x] **GEN-01**: Agent generates test scripts only for approved scenarios.
 - [x] **GEN-02**: Generated scripts follow detected repo pattern and reuse existing abstractions where available.
-- [ ] **GEN-03**: Agent shows generated scripts in preview/diff for user approval before file writes.
+- [x] **GEN-03**: Agent shows generated scripts in preview/diff for user approval before file writes.
 - [ ] **GEN-04**: Agent writes files using append/surgical updates without deleting unrelated existing tests.
 - [ ] **GEN-05**: Agent runs lint/type checks on generated output before finalizing changes.
 - [ ] **GEN-06**: If first auto-fix attempt fails, agent informs user and asks how to proceed.
@@ -121,7 +121,7 @@
 | PLAN-06 | Phase 3 | Complete |
 | GEN-01 | Phase 4 | Complete |
 | GEN-02 | Phase 4 | Complete |
-| GEN-03 | Phase 4 | Pending |
+| GEN-03 | Phase 4 | Complete |
 | GEN-04 | Phase 4 | Pending |
 | GEN-05 | Phase 4 | Pending |
 | GEN-06 | Phase 4 | Pending |

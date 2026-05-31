@@ -83,7 +83,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Approved-scope generation contracts, marker IDs, and placement policy
-- [ ] 04-02-PLAN.md — Skill quality-gate and mandatory stage-entry fail-closed enforcement
+- [x] 04-02-PLAN.md — Skill quality-gate and mandatory stage-entry fail-closed enforcement
 - [ ] 04-03-PLAN.md — Canonical preview bundle + dual-surface rendering
 - [ ] 04-04-PLAN.md — Global preview approval gate + surgical writer core
 - [ ] 04-05-PLAN.md — Post-write lint/type guardrail, retry, and escalation gate
