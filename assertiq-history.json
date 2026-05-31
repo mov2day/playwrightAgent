@@ -1,0 +1,40 @@
+[
+  {
+    "sha": "59cf116f4cf4d32d38c659896c1a49fe5d0305c0",
+    "date": "2026-05-31T21:55:13.621Z",
+    "score": 92,
+    "grade": "A-",
+    "dimensions": [
+      {
+        "id": "assertion-quality",
+        "score": 99,
+        "grade": "A+"
+      },
+      {
+        "id": "flakiness-risk",
+        "score": 88,
+        "grade": "B+"
+      },
+      {
+        "id": "isolation-risk",
+        "score": 100,
+        "grade": "A+"
+      },
+      {
+        "id": "naming-clarity",
+        "score": 82,
+        "grade": "B"
+      },
+      {
+        "id": "coverage-balance",
+        "score": 88,
+        "grade": "B+"
+      },
+      {
+        "id": "dead-test-risk",
+        "score": 100,
+        "grade": "A+"
+      }
+    ]
+  }
+]
