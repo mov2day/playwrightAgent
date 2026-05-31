@@ -68,7 +68,7 @@ describe('skills manifest builder', () => {
       'skills/playwright-skill/SKILL.md',
       'skills/playwright-skill/lib/helpers.js',
       'skills/playwright-skill/run.js'
-    ];
+    ].sort((a, b) => a.localeCompare(b));
 
     expect(paths).toEqual(sortedPaths);
     expect(paths).toEqual(expectedPaths);
