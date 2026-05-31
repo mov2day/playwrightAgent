@@ -27,6 +27,9 @@ function reviewSnapshot(overrides: Partial<ReviewSnapshot>): ReviewSnapshot {
   return {
     requestId: 'req-1',
     ackVersion: 3,
+    previewVersion: 'preview.v1',
+    approvedPreviewVersion: undefined,
+    writeApprovalRequired: true,
     approvedScenarioIds: [],
     excludedScenarioIds: [],
     approvedCount: 0,
