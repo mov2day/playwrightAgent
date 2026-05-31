@@ -48,8 +48,8 @@
 
 ### Generation, Preview, and Safe Writes
 
-- [ ] **GEN-01**: Agent generates test scripts only for approved scenarios.
-- [ ] **GEN-02**: Generated scripts follow detected repo pattern and reuse existing abstractions where available.
+- [x] **GEN-01**: Agent generates test scripts only for approved scenarios.
+- [x] **GEN-02**: Generated scripts follow detected repo pattern and reuse existing abstractions where available.
 - [ ] **GEN-03**: Agent shows generated scripts in preview/diff for user approval before file writes.
 - [ ] **GEN-04**: Agent writes files using append/surgical updates without deleting unrelated existing tests.
 - [ ] **GEN-05**: Agent runs lint/type checks on generated output before finalizing changes.
@@ -119,8 +119,8 @@
 | PLAN-04 | Phase 3 | Complete |
 | PLAN-05 | Phase 3 | Complete |
 | PLAN-06 | Phase 3 | Complete |
-| GEN-01 | Phase 4 | Pending |
-| GEN-02 | Phase 4 | Pending |
+| GEN-01 | Phase 4 | Complete |
+| GEN-02 | Phase 4 | Complete |
 | GEN-03 | Phase 4 | Pending |
 | GEN-04 | Phase 4 | Pending |
 | GEN-05 | Phase 4 | Pending |

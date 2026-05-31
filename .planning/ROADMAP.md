@@ -79,12 +79,14 @@ Plans:
   3. Preview gate blocks all file writes until explicit user approval.
   4. Writes are append/surgical and preserve unrelated existing tests.
   5. Lint/type checks run automatically; first retry failure escalates to user decision.
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 04-01: Approved-scope test generation pipeline
-- [ ] 04-02: Preview diff UX and approval hooks
-- [ ] 04-03: Surgical writer + lint/type guardrail flow
+- [x] 04-01-PLAN.md — Approved-scope generation contracts, marker IDs, and placement policy
+- [ ] 04-02-PLAN.md — Skill quality-gate and mandatory stage-entry fail-closed enforcement
+- [ ] 04-03-PLAN.md — Canonical preview bundle + dual-surface rendering
+- [ ] 04-04-PLAN.md — Global preview approval gate + surgical writer core
+- [ ] 04-05-PLAN.md — Post-write lint/type guardrail, retry, and escalation gate
 
 ### Phase 5: Execution, Retry Loop, and Audit Logging
 **Goal**: Close loop with execution outcomes, controlled remediation, and full auditability.
@@ -126,6 +128,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Participant and Pipeline Foundation | 3/3 | Complete | 2026-05-30 |
 | 2. Context Ingestion and Confidence Engine | 4/4 | Complete    | 2026-05-30 |
 | 3. Planning UX and Approval Gates | 3/3 | Complete | 2026-05-31 |
-| 4. Generation, Preview, and Safe File Writing | 0/3 | Not started | - |
+| 4. Generation, Preview, and Safe File Writing | 0/5 | Not started | - |
 | 5. Execution, Retry Loop, and Audit Logging | 0/3 | Not started | - |
 | 6. Stabilization and v1 Readiness | 0/2 | Not started | - |
