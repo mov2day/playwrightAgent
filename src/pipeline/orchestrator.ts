@@ -16,6 +16,8 @@ import {
 } from './skills/qualityGate';
 import type { PipelineState, TransitionResult } from './stateMachine';
 import { transitionState } from './stateMachine';
+import { executeSurgicalWritePlan, type SurgicalWritePlanEntryInput } from './writer/surgicalWriter';
+import { buildWriteReportSummary, type WriteReport } from './writer/writeReport';
 
 const PRE_STAGE_ENTRY_BY_TARGET_STATE: Partial<Record<PipelineState, SkillGateStage>> = {
   awaiting_plan_approval: 'planning',
@@ -128,13 +130,18 @@ export interface ActionTransitionResult {
     | 'ILLEGAL_TRANSITION'
     | 'STAGE_ENTRY_BLOCKED'
     | 'PREVIEW_APPROVAL_REQUIRED'
-    | 'PREVIEW_VERSION_MISMATCH';
+    | 'PREVIEW_VERSION_MISMATCH'
+    | 'WRITE_EXECUTION_FAILED';
   stageEntry?: StageEntryDecision;
 }
 
 export interface ReviewActionResult extends ActionTransitionResult {
   ackVersion?: number;
   reviewSnapshot?: ReviewSnapshot;
+}
+
+export interface WriteExecutionResult extends ActionTransitionResult {
+  report?: WriteReport;
 }
 
 export type StageEntryGateEvaluator = (stage: SkillGateStage) => SkillQualityGateResult;
@@ -533,6 +540,124 @@ export class PipelineOrchestrator {
     }
 
     return this.transition(requestId, targetState, action);
+  }
+
+  executeWritePlan(requestId: string, entries: readonly SurgicalWritePlanEntryInput[]): WriteExecutionResult {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    if (session.state !== 'ready_to_write') {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'ILLEGAL_TRANSITION'
+      };
+    }
+
+    if (!hasCurrentPreviewApproval(session)) {
+      this.emit(requestId, 'gate', 'preview_approval_required', session.state, {
+        previewVersion: session.previewVersion,
+        approvedPreviewVersion: session.approvedPreviewVersion
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'PREVIEW_APPROVAL_REQUIRED'
+      };
+    }
+
+    const stageEntry = this.evaluatePreStageGuard('write');
+    if (stageEntry.blocked || stageEntry.fail_closed || stageEntry.requires_user_decision) {
+      this.emit(requestId, 'gate', 'stage_entry_blocked', session.state, {
+        stage: stageEntry.stage,
+        blocked: stageEntry.blocked,
+        fail_closed: stageEntry.fail_closed,
+        requires_user_decision: stageEntry.requires_user_decision,
+        reasonCodes: stageEntry.reasons.map((reason) => reason.code),
+        action: 'write_execute'
+      });
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'STAGE_ENTRY_BLOCKED',
+        stageEntry
+      };
+    }
+
+    this.emit(requestId, 'gate', 'stage_entry_allowed', session.state, {
+      stage: stageEntry.stage,
+      blocked: stageEntry.blocked,
+      fail_closed: stageEntry.fail_closed,
+      requires_user_decision: stageEntry.requires_user_decision,
+      manifest_hash: stageEntry.manifest_hash,
+      action: 'write_execute'
+    });
+
+    const transition = transitionState(session.state, 'completed');
+    if (!transition.ok) {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: transition.errorCode
+      };
+    }
+
+    try {
+      const writeResult = executeSurgicalWritePlan(entries, {
+        rootDir: this.rootDir,
+        forbidDelete: true,
+        preserveExisting: true
+      });
+      const report = buildWriteReportSummary(requestId, session.previewVersion, writeResult.outcomes);
+
+      session.state = transition.to;
+      session.updatedAt = this.now().toISOString();
+
+      this.emit(requestId, 'gate', 'transition_applied', session.state, {
+        from: transition.from,
+        to: transition.to,
+        action: 'write_execute'
+      });
+
+      this.emit(requestId, 'ui', 'write_report_generated', session.state, {
+        previewVersion: session.previewVersion,
+        summary: report.summary,
+        skippedReasons: report.skippedReasons
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: true,
+        requestId,
+        from: transition.from,
+        to: transition.to,
+        report
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown write failure';
+      this.emit(requestId, 'gate', 'write_execution_failed', session.state, {
+        message
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'WRITE_EXECUTION_FAILED'
+      };
+    }
   }
 
   private evaluatePreStageGuard(stage: SkillGateStage): StageEntryDecision {

@@ -211,7 +211,19 @@ describe('generation preview write flow', () => {
       '});'
     ].join('\n'));
 
-    const orchestrator = new PipelineOrchestrator({ eventSink: sink, now, rootDir });
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now,
+      rootDir,
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'writer-test'
+      })
+    });
     orchestrator.startSession(requestId, 'ready_to_write');
     expect(orchestrator.applyPreviewAction(requestId, createPreviewApproveAllAction(
       requestId,
