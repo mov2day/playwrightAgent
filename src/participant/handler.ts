@@ -101,6 +101,7 @@ export interface ParticipantHandlerDeps {
   confidenceProfile?: ConfidenceWeightProfile;
   confidenceInputFactory?: (args: ConfidenceInputFactoryArgs) => ConfidenceDecisionInput;
   planBundleFactory?: (args: PlanBundleFactoryArgs) => PlanReviewBundle | undefined;
+  executionRunOptions?: Pick<ExecuteScopedRunOptions, 'commandRunner' | 'applyScopedAutoFix'>;
 }
 
 function emitEvent(
@@ -650,6 +651,30 @@ export async function handleExecutionRunRequest(
   }
 
   return orchestrator.executeScopedRun(requestId, options);
+}
+
+export async function handleExecutionGuardrailDecision(
+  requestId: string,
+  action: QuickAction,
+  comment: string | undefined,
+  deps: ParticipantHandlerDeps = {}
+): Promise<ActionTransitionResult | ExecutionRunResult> {
+  const orchestrator = deps.orchestrator;
+  if (!orchestrator) {
+    return {
+      ok: false,
+      requestId,
+      from: 'initialized',
+      errorCode: 'UNKNOWN_REQUEST'
+    };
+  }
+
+  return orchestrator.applyExecutionGuardrailDecision(
+    requestId,
+    action,
+    comment,
+    deps.executionRunOptions
+  );
 }
 
 export function createParticipantRequestHandler(deps: ParticipantHandlerDeps = {}) {

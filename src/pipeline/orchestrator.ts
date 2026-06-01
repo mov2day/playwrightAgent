@@ -4,7 +4,11 @@ import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
 import { createPipelineEvent } from './events';
-import { createScopedRunRequest, type ScopedRunRequestInput } from './execution/contracts';
+import {
+  createScopedRunRequest,
+  type ScopedRunRequest,
+  type ScopedRunRequestInput
+} from './execution/contracts';
 import {
   executeScopedRun as runScopedExecution,
   type ScopedRunExecutionResult,
@@ -103,6 +107,8 @@ interface PipelineSession {
   previewVersionCounter: number;
   approvedPreviewVersion?: string;
   pendingGuardrailEscalation?: LintTypeEscalationBundle;
+  pendingGuardrailSource?: 'write' | 'execution';
+  pendingExecutionRunRequest?: ScopedRunRequest;
   guardrailDecisionHistory: GuardrailDecisionRecord[];
   lastGeneratedOrUpdatedTargets: string[];
 }
@@ -317,6 +323,8 @@ export class PipelineOrchestrator {
       previewVersionCounter: 1,
       approvedPreviewVersion: undefined,
       pendingGuardrailEscalation: undefined,
+      pendingGuardrailSource: undefined,
+      pendingExecutionRunRequest: undefined,
       guardrailDecisionHistory: [],
       lastGeneratedOrUpdatedTargets: []
     };
@@ -332,6 +340,20 @@ export class PipelineOrchestrator {
 
   getPendingGuardrailEscalation(requestId: string): LintTypeEscalationBundle | undefined {
     return this.sessions.get(requestId)?.pendingGuardrailEscalation;
+  }
+
+  getPendingExecutionRunRequest(requestId: string): ScopedRunRequest | undefined {
+    const pending = this.sessions.get(requestId)?.pendingExecutionRunRequest;
+    if (!pending) {
+      return undefined;
+    }
+
+    return {
+      requestId: pending.requestId,
+      scopeMode: pending.scopeMode,
+      targetSource: pending.targetSource,
+      targets: [...pending.targets]
+    };
   }
 
   seedReviewRecords(requestId: string, scenarios: readonly ScenarioPlanRecord[]): boolean {
@@ -656,6 +678,7 @@ export class PipelineOrchestrator {
     }
 
     const escalation = session.pendingGuardrailEscalation;
+    const escalationSource = session.pendingGuardrailSource ?? 'write';
     if (session.state !== 'awaiting_guardrail_decision' || !escalation) {
       this.emit(requestId, 'gate', 'quick_action_unmapped', session.state, {
         action,
@@ -670,7 +693,13 @@ export class PipelineOrchestrator {
     }
 
     let targetState: PipelineState | undefined;
-    if (action === 'approve') {
+    if (escalationSource === 'execution') {
+      if (action === 'approve' || action === 'continue') {
+        targetState = 'completed';
+      } else if (action === 'reject' || action === 'cancel') {
+        targetState = 'cancelled';
+      }
+    } else if (action === 'approve') {
       targetState = 'completed';
     } else if (action === 'continue') {
       targetState = 'ready_to_write';
@@ -715,6 +744,10 @@ export class PipelineOrchestrator {
       decidedAt
     });
     session.pendingGuardrailEscalation = undefined;
+    session.pendingGuardrailSource = undefined;
+    if (!(escalationSource === 'execution' && action === 'continue')) {
+      session.pendingExecutionRunRequest = undefined;
+    }
     session.state = transition.to;
     session.updatedAt = decidedAt;
 
@@ -733,12 +766,74 @@ export class PipelineOrchestrator {
       action: `guardrail_decision_${action}`
     });
 
+    if (escalationSource === 'execution') {
+      if (action === 'continue') {
+        this.emit(requestId, 'orchestrator', 'manual_fix_confirmed', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      } else if (action === 'approve') {
+        this.emit(requestId, 'orchestrator', 'execution_decision_approved', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      } else if (action === 'reject') {
+        this.emit(requestId, 'orchestrator', 'execution_decision_rejected', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      } else if (action === 'cancel') {
+        this.emit(requestId, 'orchestrator', 'execution_decision_cancelled', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      }
+    }
+
     return {
       ok: true,
       requestId,
       from: transition.from,
       to: transition.to
     };
+  }
+
+  async applyExecutionGuardrailDecision(
+    requestId: string,
+    action: QuickAction,
+    comment?: string,
+    options: Pick<ExecuteScopedRunOptions, 'commandRunner' | 'applyScopedAutoFix'> = {}
+  ): Promise<ActionTransitionResult | ExecutionRunResult> {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    const pendingSource = session.pendingGuardrailSource;
+    const pendingRunRequest = this.getPendingExecutionRunRequest(requestId);
+    const decisionResult = this.applyGuardrailDecision(requestId, action, comment);
+    if (!decisionResult.ok) {
+      return decisionResult;
+    }
+
+    if (action !== 'continue' || pendingSource !== 'execution' || !pendingRunRequest) {
+      return decisionResult;
+    }
+
+    const rerunSession = this.sessions.get(requestId);
+    this.emit(requestId, 'orchestrator', 'execution_rerun_requested', rerunSession?.state, {
+      scopeMode: pendingRunRequest.scopeMode,
+      targetCount: pendingRunRequest.targets.length,
+      targetSource: pendingRunRequest.targetSource
+    }, rerunSession?.confidenceProfileId, rerunSession?.decisionGate);
+
+    return this.executeScopedRun(requestId, {
+      scopeMode: pendingRunRequest.scopeMode,
+      generatedOrUpdatedTargets: pendingRunRequest.targets,
+      commandRunner: options.commandRunner,
+      applyScopedAutoFix: options.applyScopedAutoFix
+    });
   }
 
   executeWritePlan(requestId: string, entries: readonly SurgicalWritePlanEntryInput[]): WriteExecutionResult {
@@ -983,6 +1078,8 @@ export class PipelineOrchestrator {
 
         session.state = blockedTransition.to;
         session.pendingGuardrailEscalation = guardrail.escalation;
+        session.pendingGuardrailSource = 'write';
+        session.pendingExecutionRunRequest = undefined;
         session.updatedAt = this.now().toISOString();
 
         this.emit(requestId, 'gate', 'guardrail_escalation_required', session.state, {
@@ -1025,6 +1122,8 @@ export class PipelineOrchestrator {
 
       session.state = transition.to;
       session.pendingGuardrailEscalation = undefined;
+      session.pendingGuardrailSource = undefined;
+      session.pendingExecutionRunRequest = undefined;
       session.updatedAt = this.now().toISOString();
 
       this.emit(requestId, 'gate', 'transition_applied', session.state, {
@@ -1145,6 +1244,13 @@ export class PipelineOrchestrator {
 
       session.state = blockedTransition.to;
       session.pendingGuardrailEscalation = guardrail.escalation;
+      session.pendingGuardrailSource = 'execution';
+      session.pendingExecutionRunRequest = {
+        requestId: runRequest.requestId,
+        scopeMode: runRequest.scopeMode,
+        targetSource: runRequest.targetSource,
+        targets: [...runRequest.targets]
+      };
       session.updatedAt = this.now().toISOString();
 
       this.emit(requestId, 'orchestrator', 'execution_run_escalated', session.state, {
@@ -1170,6 +1276,8 @@ export class PipelineOrchestrator {
     }
 
     session.pendingGuardrailEscalation = undefined;
+    session.pendingGuardrailSource = undefined;
+    session.pendingExecutionRunRequest = undefined;
 
     this.emit(requestId, 'orchestrator', 'execution_run_succeeded', session.state, {
       scopeMode: lastRun.scopeMode,
