@@ -114,6 +114,13 @@ describe('audit persistence request correlation', () => {
           interactionType?: string;
           decisionAction?: string;
           decisionComment?: string;
+          details?: {
+            failureDiagnostics?: Array<{
+              targetPath: string;
+              bucket: string;
+              bucketReason: string;
+            }>;
+          };
         });
 
       expect(records.every((record) => record.requestId === 'req_audit_corr_1')).toBe(true);
@@ -126,6 +133,12 @@ describe('audit persistence request correlation', () => {
       expect(records.some((record) => record.action === 'guardrail_decision_recorded'
         && record.decisionAction === 'continue'
         && record.decisionComment === 'Manual selector fix applied.')).toBe(true);
+      expect(records.some((record) => record.action === 'execution_run_escalated'
+        && Array.isArray(record.details?.failureDiagnostics)
+        && record.details?.failureDiagnostics.some((item) => item.bucket === 'test_authoring'
+          && item.bucketReason.includes('Assertion wiring')))).toBe(true);
+      expect(records.some((record) => record.action === 'execution_run_succeeded'
+        && Array.isArray(record.details?.failureDiagnostics))).toBe(true);
     } finally {
       fs.rmSync(rootDir, { recursive: true, force: true });
     }
