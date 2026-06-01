@@ -27,6 +27,7 @@ All items below must be green for release.
 - [x] `.vscodeignore` excludes `.planning`, `tests`, `src`, `.github`
 - [x] `release/PACKAGING-HARDENING.md` documents include/exclude policy
 - [x] Generated VSIX path recorded
+- [x] `release/OPERATOR-RUNBOOK.md` documents environment, gates, and escalation semantics
 
 ## UAT Completion Criteria
 
