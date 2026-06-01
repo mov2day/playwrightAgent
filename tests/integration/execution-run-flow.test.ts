@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LocalToolCommandResult } from '../../src/adapters/localToolRunner';
+import { InMemoryEventSink } from '../../src/adapters/eventSink';
 import {
   createScopedRunRequest,
   type ScopedRunRequest
 } from '../../src/pipeline/execution/contracts';
+import { PipelineOrchestrator } from '../../src/pipeline/orchestrator';
 import { executeScopedRun } from '../../src/pipeline/execution/scopedRunExecutor';
+import { handleExecutionRunRequest } from '../../src/participant/handler';
 
 function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): LocalToolCommandResult {
   return {
@@ -114,5 +117,71 @@ describe('execution run flow', () => {
 
     expect(result.result.ok).toBe(false);
     expect(result.result.error).toContain('No generated/updated targets available for scoped execution.');
+  });
+
+  it('runs scoped execution from participant trigger only after write completion', async () => {
+    const sink = new InMemoryEventSink();
+    const requestId = 'req_execution_5';
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now: () => new Date('2026-06-01T04:00:00.000Z'),
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'execution-run-flow'
+      })
+    });
+
+    orchestrator.startSession(requestId, 'completed');
+
+    const runResult = await handleExecutionRunRequest(requestId, {
+      generatedOrUpdatedTargets: ['tests/e2e/account.spec.ts'],
+      commandRunner: async (command, args) => makeCommandResult({ command, args })
+    }, {
+      orchestrator
+    });
+
+    expect(runResult.ok).toBe(true);
+    expect(runResult.run?.commandPreview.args).toEqual([
+      'playwright',
+      'test',
+      'tests/e2e/account.spec.ts',
+      '--reporter=json'
+    ]);
+    const actions = sink.getEvents().map((event) => event.action);
+    expect(actions.indexOf('execution_run_requested')).toBeGreaterThanOrEqual(0);
+    expect(actions.indexOf('execution_command_preview')).toBeGreaterThan(actions.indexOf('execution_run_requested'));
+  });
+
+  it('blocks participant run trigger before workflow reaches completed state', async () => {
+    const sink = new InMemoryEventSink();
+    const requestId = 'req_execution_6';
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now: () => new Date('2026-06-01T05:00:00.000Z'),
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'execution-run-flow'
+      })
+    });
+
+    orchestrator.startSession(requestId, 'ready_to_write');
+
+    const runResult = await handleExecutionRunRequest(requestId, {
+      generatedOrUpdatedTargets: ['tests/e2e/account.spec.ts'],
+      commandRunner: async (command, args) => makeCommandResult({ command, args })
+    }, {
+      orchestrator
+    });
+
+    expect(runResult.ok).toBe(false);
+    expect(runResult.errorCode).toBe('ILLEGAL_TRANSITION');
   });
 });
