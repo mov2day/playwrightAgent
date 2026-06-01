@@ -23,6 +23,34 @@ function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): Loc
   };
 }
 
+function makePlaywrightJsonResult(overrides: {
+  passCount?: number;
+  failCount?: number;
+  failures?: Array<{ file: string; message: string }>;
+} = {}): string {
+  const failures = overrides.failures ?? [];
+  return JSON.stringify({
+    suites: failures.map((failure) => ({
+      file: failure.file,
+      specs: [{
+        title: failure.file,
+        tests: [{
+          results: [{
+            status: 'failed',
+            error: {
+              message: failure.message
+            }
+          }]
+        }]
+      }]
+    })),
+    stats: {
+      expected: overrides.passCount ?? 0,
+      unexpected: overrides.failCount ?? failures.length
+    }
+  });
+}
+
 describe('execution run flow', () => {
   it('emits execution_command_preview before execution_run_started for generated/updated scope', async () => {
     const events: string[] = [];
@@ -139,7 +167,14 @@ describe('execution run flow', () => {
 
     const runResult = await handleExecutionRunRequest(requestId, {
       generatedOrUpdatedTargets: ['tests/e2e/account.spec.ts'],
-      commandRunner: async (command, args) => makeCommandResult({ command, args })
+      commandRunner: async (command, args) => makeCommandResult({
+        command,
+        args,
+        stdout: makePlaywrightJsonResult({
+          passCount: 2,
+          failCount: 0
+        })
+      })
     }, {
       orchestrator
     });
@@ -151,6 +186,15 @@ describe('execution run flow', () => {
       'tests/e2e/account.spec.ts',
       '--reporter=json'
     ]);
+    expect(runResult.runSummary?.summary.passCount).toBe(2);
+    expect(runResult.runSummary?.summary.failCount).toBe(0);
+    expect(runResult.runSummary?.summary.failingFiles).toEqual([]);
+    expect(runResult.runSummary?.summary.topErrors).toEqual([]);
+    expect(runResult.runSummary?.summary.bucketCounts).toEqual({
+      test_authoring: 0,
+      application_behavior: 0,
+      environment_or_tooling: 0
+    });
     const actions = sink.getEvents().map((event) => event.action);
     expect(actions.indexOf('execution_run_requested')).toBeGreaterThanOrEqual(0);
     expect(actions.indexOf('execution_command_preview')).toBeGreaterThan(actions.indexOf('execution_run_requested'));
