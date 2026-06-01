@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { LocalToolCommandResult } from '../../src/adapters/localToolRunner';
 import { InMemoryEventSink } from '../../src/adapters/eventSink';
 import { PipelineOrchestrator } from '../../src/pipeline/orchestrator';
+import { handleExecutionGuardrailDecision } from '../../src/participant/handler';
 
 function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): LocalToolCommandResult {
   return {
@@ -123,5 +124,140 @@ describe('execution retry escalation', () => {
     });
     expect(result.escalation?.topErrors.length).toBeGreaterThan(0);
     expect(orchestrator.getSession(requestId)?.state).toBe('awaiting_guardrail_decision');
+  });
+
+  it('continue records manual fix and reruns identical scoped command', async () => {
+    const sink = new InMemoryEventSink();
+    const requestId = 'req_execution_retry_3';
+    const initialCommands: string[] = [];
+    const rerunCommands: string[] = [];
+    let firstPhase = true;
+
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now: () => new Date('2026-06-01T08:00:00.000Z'),
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'execution-retry'
+      })
+    });
+    orchestrator.startSession(requestId, 'completed');
+
+    const escalated = await orchestrator.executeScopedRun(requestId, {
+      generatedOrUpdatedTargets: ['tests/e2e/profile.spec.ts'],
+      commandRunner: async (command, args) => {
+        initialCommands.push([command, ...args].join(' '));
+        return makeCommandResult({
+          command,
+          args,
+          stderr: 'expect(locator).toBeVisible() failed',
+          error: 'selector mismatch'
+        });
+      },
+      applyScopedAutoFix: async () => ({
+        ok: false,
+        summary: 'One-shot fix did not resolve failure.'
+      })
+    } as unknown as Parameters<typeof orchestrator.executeScopedRun>[1]);
+
+    expect(escalated.errorCode).toBe('GUARDRAIL_ESCALATION_REQUIRED');
+    expect(orchestrator.getSession(requestId)?.state).toBe('awaiting_guardrail_decision');
+
+    const continued = await handleExecutionGuardrailDecision(requestId, 'continue', 'Manual selector fix applied.', {
+      orchestrator,
+      executionRunOptions: {
+        commandRunner: async (command, args) => {
+          rerunCommands.push([command, ...args].join(' '));
+          if (firstPhase) {
+            firstPhase = false;
+            return makeCommandResult({
+              ok: true,
+              command,
+              args,
+              exitCode: 0,
+              stdout: '{"status":"passed"}',
+              stderr: '',
+              error: undefined
+            });
+          }
+          return makeCommandResult({
+            ok: true,
+            command,
+            args,
+            exitCode: 0,
+            stdout: '{"status":"passed"}',
+            stderr: '',
+            error: undefined
+          });
+        }
+      }
+    });
+
+    expect(continued.ok).toBe(true);
+    expect(orchestrator.getSession(requestId)?.state).toBe('completed');
+    expect(initialCommands[0]).toBe(rerunCommands[0]);
+    const events = sink.getEvents().map((event) => event.action);
+    expect(events).toContain('manual_fix_confirmed');
+    expect(events).toContain('execution_rerun_requested');
+    expect(events).toContain('guardrail_decision_recorded');
+  });
+
+  it('approve/reject/cancel produce explicit execution decision events', async () => {
+    const baseNow = new Date('2026-06-01T09:00:00.000Z');
+
+    for (const action of ['approve', 'reject', 'cancel'] as const) {
+      const sink = new InMemoryEventSink();
+      const requestId = `req_execution_retry_${action}`;
+      const orchestrator = new PipelineOrchestrator({
+        eventSink: sink,
+        now: () => baseNow,
+        stageEntryGateEvaluator: (stage) => ({
+          stage,
+          blocked: false,
+          fail_closed: false,
+          requires_user_decision: false,
+          reasons: [],
+          manifest_hash: 'execution-retry'
+        })
+      });
+      orchestrator.startSession(requestId, 'completed');
+
+      const escalated = await orchestrator.executeScopedRun(requestId, {
+        generatedOrUpdatedTargets: ['tests/e2e/profile.spec.ts'],
+        commandRunner: async (command, args) => makeCommandResult({
+          command,
+          args,
+          stderr: 'still failing',
+          error: 'still failing'
+        }),
+        applyScopedAutoFix: async () => ({
+          ok: false,
+          summary: 'No fix'
+        })
+      } as unknown as Parameters<typeof orchestrator.executeScopedRun>[1]);
+
+      expect(escalated.errorCode).toBe('GUARDRAIL_ESCALATION_REQUIRED');
+
+      const decision = await handleExecutionGuardrailDecision(requestId, action, `${action} decision`, {
+        orchestrator
+      });
+
+      expect(decision.ok).toBe(true);
+      const events = sink.getEvents().map((event) => event.action);
+      if (action === 'approve') {
+        expect(orchestrator.getSession(requestId)?.state).toBe('completed');
+        expect(events).toContain('execution_decision_approved');
+      } else if (action === 'reject') {
+        expect(orchestrator.getSession(requestId)?.state).toBe('cancelled');
+        expect(events).toContain('execution_decision_rejected');
+      } else {
+        expect(orchestrator.getSession(requestId)?.state).toBe('cancelled');
+        expect(events).toContain('execution_decision_cancelled');
+      }
+    }
   });
 });
