@@ -3,6 +3,30 @@ import { spawn } from 'node:child_process';
 const DEFAULT_TIMEOUT_MS = 20_000;
 const OUTPUT_LIMIT = 200_000;
 
+interface SensitiveRedactionRule {
+  id: string;
+  pattern: RegExp;
+  replacement: string;
+}
+
+const SENSITIVE_REDACTION_RULES: readonly SensitiveRedactionRule[] = [
+  {
+    id: 'authorization_pair',
+    pattern: /((?:"|')?authorization(?:"|')?\s*[:=]\s*)(?:Bearer\s+[A-Za-z0-9._~+\/=-]+|"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi,
+    replacement: '$1[REDACTED]'
+  },
+  {
+    id: 'credential_pair',
+    pattern: /((?:"|')?(?:x[-_]?api[_-]?key|api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret)(?:"|')?\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi,
+    replacement: '$1[REDACTED]'
+  },
+  {
+    id: 'bearer_token',
+    pattern: /Bearer\s+[A-Za-z0-9._~+\/=-]+/gi,
+    replacement: 'Bearer [REDACTED]'
+  }
+] as const;
+
 export interface LocalToolCommandResult {
   ok: boolean;
   command: string;
@@ -21,11 +45,21 @@ function clampOutput(value: string): string {
   return `${value.slice(0, OUTPUT_LIMIT)}\n...[truncated]`;
 }
 
+export function listAppliedRedactionRules(value: string): string[] {
+  const matches = new Set<string>();
+  for (const rule of SENSITIVE_REDACTION_RULES) {
+    const testPattern = new RegExp(rule.pattern.source, rule.pattern.flags.replaceAll('g', ''));
+    if (testPattern.test(value)) {
+      matches.add(rule.id);
+    }
+  }
+  return [...matches].sort((left, right) => left.localeCompare(right));
+}
+
 export function redactSensitiveText(value: string): string {
-  return value
-    .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, 'Bearer [REDACTED]')
-    .replace(/(authorization\s*[:=]\s*)([^\s,;]+)/gi, '$1[REDACTED]')
-    .replace(/((?:api[_-]?key|token|secret)\s*[:=]\s*)([^\s,;]+)/gi, '$1[REDACTED]');
+  return SENSITIVE_REDACTION_RULES.reduce((redacted, rule) => {
+    return redacted.replace(rule.pattern, rule.replacement);
+  }, value);
 }
 
 export async function runLocalToolCommand(

@@ -1,19 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { redactSensitiveText } from './localToolRunner';
+import { listAppliedRedactionRules, redactSensitiveText } from './localToolRunner';
 import type { EventSink, PipelineEvent } from './eventSink';
 
 const DEFAULT_AUDIT_DIR = path.join('.planning', 'logs', 'audit');
 const DEFAULT_RETENTION_DAYS = 14;
 const DEFAULT_MAX_FILE_BYTES = 5_000_000;
 const DEFAULT_SCHEMA_VERSION = 'pipeline_event.v1';
-
-const REDACTION_MATCHERS = [
-  { id: 'bearer_token', pattern: /Bearer\s+[A-Za-z0-9._~-]+/i },
-  { id: 'authorization_header', pattern: /(authorization\s*[:=]\s*)([^\s,;]+)/i },
-  { id: 'credential_pair', pattern: /((?:api[_-]?key|token|secret)\s*[:=]\s*)([^\s,;]+)/i }
-] as const;
 
 interface RedactionEvidenceBuilder {
   fieldCount: number;
@@ -58,10 +52,8 @@ function redactSerializedValue(value: string, evidence: RedactionEvidenceBuilder
   }
 
   evidence.fieldCount += 1;
-  for (const matcher of REDACTION_MATCHERS) {
-    if (matcher.pattern.test(value)) {
-      evidence.appliedRules.add(matcher.id);
-    }
+  for (const ruleId of listAppliedRedactionRules(value)) {
+    evidence.appliedRules.add(ruleId);
   }
 
   return next;
