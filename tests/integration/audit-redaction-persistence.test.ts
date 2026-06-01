@@ -21,11 +21,14 @@ describe('audit redaction persistence', () => {
         action: 'guardrail_decision_recorded',
         timestamp: '2026-06-01T09:59:59.000Z',
         details: {
-          authorization: 'Bearer super-secret-token',
-          token: 'token=abc123',
+          authorization: 'Authorization: Bearer LEAK_CANARY_BEARER+/=',
+          token: 'token=LEAK_CANARY_TOKEN',
           nested: {
-            api_key: 'api_key=xyz789'
-          }
+            api_key: 'x-api-key: LEAK_CANARY_API_KEY',
+            jsonToken: '{"token":"LEAK_CANARY_QUOTED_TOKEN"}',
+            quotedSecret: "'secret'='LEAK_CANARY_QUOTED_SECRET'"
+          },
+          authorizationPair: 'authorization=Bearer LEAK_CANARY_AUTH_PAIR'
         }
       });
 
@@ -48,7 +51,12 @@ describe('audit redaction persistence', () => {
 
       expect(record.requestId).toBe('req_redaction_1');
       expect(record.schemaVersion).toBe('pipeline_event.v1');
-      expect(JSON.stringify(record.details)).not.toContain('super-secret-token');
+      expect(JSON.stringify(record.details)).not.toContain('LEAK_CANARY_BEARER+/=');
+      expect(JSON.stringify(record.details)).not.toContain('LEAK_CANARY_TOKEN');
+      expect(JSON.stringify(record.details)).not.toContain('LEAK_CANARY_API_KEY');
+      expect(JSON.stringify(record.details)).not.toContain('LEAK_CANARY_QUOTED_TOKEN');
+      expect(JSON.stringify(record.details)).not.toContain('LEAK_CANARY_QUOTED_SECRET');
+      expect(JSON.stringify(record.details)).not.toContain('LEAK_CANARY_AUTH_PAIR');
       expect(JSON.stringify(record.details)).toContain('[REDACTED]');
       expect(record.redactionEvidence).toMatchObject({
         redacted: true
