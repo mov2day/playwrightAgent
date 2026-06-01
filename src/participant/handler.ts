@@ -1,5 +1,6 @@
 import type { EventSink, PipelineEvent } from '../adapters/eventSink';
 import { createDefaultEventSink } from '../adapters/eventSink';
+import { redactSensitiveText, redactSensitiveValue } from '../adapters/localToolRunner';
 import { buildRequestContext } from '../pipeline/bootstrapContext';
 import {
   DEFAULT_CONFIDENCE_PROFILE,
@@ -117,6 +118,9 @@ function emitEvent(
   decisionAction?: 'approve' | 'reject' | 'continue' | 'cancel',
   decisionComment?: string
 ): void {
+  const sanitizedDetails = details
+    ? (redactSensitiveValue(details) as Record<string, unknown>)
+    : undefined;
   const interactionType = stage === 'gate' ? 'gate_decision' : 'ai_interaction';
   const event: PipelineEvent = {
     requestId,
@@ -126,10 +130,10 @@ function emitEvent(
     schemaVersion: PIPELINE_EVENT_SCHEMA_VERSION,
     interactionType,
     decisionAction,
-    decisionComment,
+    decisionComment: decisionComment ? redactSensitiveText(decisionComment) : undefined,
     confidenceProfileId,
     decisionGate,
-    details
+    details: sanitizedDetails
   };
   sink.emit(event);
 }

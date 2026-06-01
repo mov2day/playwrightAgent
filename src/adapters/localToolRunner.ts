@@ -62,6 +62,26 @@ export function redactSensitiveText(value: string): string {
   }, value);
 }
 
+export function redactSensitiveValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return redactSensitiveText(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitiveValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const next: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      next[key] = redactSensitiveValue(nestedValue);
+    }
+    return next;
+  }
+
+  return value;
+}
+
 export async function runLocalToolCommand(
   command: string,
   args: string[],

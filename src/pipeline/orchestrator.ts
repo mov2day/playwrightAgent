@@ -1,5 +1,5 @@
 import type { EventSink } from '../adapters/eventSink';
-import type { LocalToolCommandResult } from '../adapters/localToolRunner';
+import { redactSensitiveText, redactSensitiveValue, type LocalToolCommandResult } from '../adapters/localToolRunner';
 import { QUICK_ACTIONS, type QuickAction } from '../participant/actions';
 import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
@@ -1896,6 +1896,9 @@ export class PipelineOrchestrator {
     decisionAction?: PipelineDecisionAction,
     decisionComment?: string
   ): void {
+    const sanitizedDetails = details
+      ? (redactSensitiveValue(details) as Record<string, unknown>)
+      : undefined;
     const event = createPipelineEvent(
       {
         requestId,
@@ -1906,8 +1909,8 @@ export class PipelineOrchestrator {
         decisionGate,
         interactionType,
         decisionAction,
-        decisionComment,
-        details
+        decisionComment: decisionComment ? redactSensitiveText(decisionComment) : undefined,
+        details: sanitizedDetails
       },
       this.now
     );
