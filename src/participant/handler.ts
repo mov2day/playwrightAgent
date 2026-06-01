@@ -1,5 +1,5 @@
 import type { EventSink, PipelineEvent } from '../adapters/eventSink';
-import { InMemoryEventSink } from '../adapters/eventSink';
+import { createDefaultEventSink } from '../adapters/eventSink';
 import { buildRequestContext } from '../pipeline/bootstrapContext';
 import {
   DEFAULT_CONFIDENCE_PROFILE,
@@ -371,8 +371,9 @@ function buildResponse(
 }
 
 export function handlePlanCommand(rawInput: string, deps: ParticipantHandlerDeps = {}): PlanCommandResponse {
-  const eventSink = deps.eventSink ?? new InMemoryEventSink();
   const now = deps.now ?? (() => new Date());
+  const fallbackEventSink = deps.eventSink ?? createDefaultEventSink({ now });
+  const eventSink = deps.orchestrator?.getEventSink() ?? fallbackEventSink;
   const planBundleFactory = deps.planBundleFactory ?? defaultPlanBundleFactory;
 
   const parseResult = parseSlashPlanInput(rawInput);
@@ -475,8 +476,9 @@ export function handleGateFreeText(
     throw new Error(`Unknown requestId: ${requestId}`);
   }
 
-  const eventSink = deps.eventSink ?? new InMemoryEventSink();
   const now = deps.now ?? (() => new Date());
+  const fallbackEventSink = deps.eventSink ?? createDefaultEventSink({ now });
+  const eventSink = deps.orchestrator?.getEventSink() ?? fallbackEventSink;
   const planBundleFactory = deps.planBundleFactory ?? defaultPlanBundleFactory;
 
   const trimmed = freeText.trim();

@@ -338,6 +338,10 @@ export class PipelineOrchestrator {
     return this.sessions.get(requestId);
   }
 
+  getEventSink(): EventSink {
+    return this.eventSink;
+  }
+
   getPendingGuardrailEscalation(requestId: string): LintTypeEscalationBundle | undefined {
     return this.sessions.get(requestId)?.pendingGuardrailEscalation;
   }
