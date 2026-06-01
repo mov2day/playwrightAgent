@@ -67,8 +67,8 @@
 
 - [ ] **SECU-01**: Jira and Confluence credentials remain in environment variables consumed by local tooling only.
 - [ ] **SECU-02**: No secrets/tokens are sent to AI model prompts.
-- [ ] **SECU-03**: Agent logs all AI interactions and gate decisions for audit review.
-- [ ] **SECU-04**: Logs redact sensitive data before persistence.
+- [x] **SECU-03**: Agent logs all AI interactions and gate decisions for audit review.
+- [x] **SECU-04**: Logs redact sensitive data before persistence.
 
 ## v2 Requirements
 
@@ -132,8 +132,8 @@
 | RUN-05 | Phase 3 | Complete |
 | SECU-01 | Phase 6 | Pending |
 | SECU-02 | Phase 6 | Pending |
-| SECU-03 | Phase 5 | Pending |
-| SECU-04 | Phase 5 | Pending |
+| SECU-03 | Phase 5 | Complete |
+| SECU-04 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 42 total
