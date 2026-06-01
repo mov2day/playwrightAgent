@@ -5,6 +5,10 @@ export interface PipelineEvent {
   stage: string;
   action: string;
   timestamp: string;
+  schemaVersion?: string;
+  interactionType?: 'ai_interaction' | 'gate_decision' | 'system_event';
+  decisionAction?: 'approve' | 'reject' | 'continue' | 'cancel';
+  decisionComment?: string;
   confidenceProfileId?: string;
   decisionGate?: 'reject' | 'approval_required' | 'continue';
   details?: Record<string, unknown>;

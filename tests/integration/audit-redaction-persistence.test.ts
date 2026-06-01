@@ -47,7 +47,7 @@ describe('audit redaction persistence', () => {
       };
 
       expect(record.requestId).toBe('req_redaction_1');
-      expect(record.schemaVersion).toBe('audit.v1');
+      expect(record.schemaVersion).toBe('pipeline_event.v1');
       expect(JSON.stringify(record.details)).not.toContain('super-secret-token');
       expect(JSON.stringify(record.details)).toContain('[REDACTED]');
       expect(record.redactionEvidence).toMatchObject({

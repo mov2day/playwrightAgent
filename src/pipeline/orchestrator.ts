@@ -3,7 +3,11 @@ import { QUICK_ACTIONS, type QuickAction } from '../participant/actions';
 import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
-import { createPipelineEvent } from './events';
+import {
+  createPipelineEvent,
+  type PipelineDecisionAction,
+  type PipelineInteractionType
+} from './events';
 import {
   createScopedRunRequest,
   type ScopedRunRequest,
@@ -496,7 +500,7 @@ export class PipelineOrchestrator {
     this.emit(requestId, 'gate', 'confidence_decision_recorded', session.state, {
       confidenceProfileId,
       decisionGate
-    }, confidenceProfileId, decisionGate);
+    }, confidenceProfileId, decisionGate, 'gate_decision');
   }
 
   appendFreeTextContext(requestId: string, text: string): boolean {
@@ -762,7 +766,7 @@ export class PipelineOrchestrator {
       affectedFiles: escalation.affectedFiles,
       topErrors: escalation.topErrors,
       attemptedFixSummary: escalation.attemptedFixSummary
-    }, session.confidenceProfileId, session.decisionGate);
+    }, session.confidenceProfileId, session.decisionGate, 'gate_decision', action, normalizedComment);
 
     this.emit(requestId, 'gate', 'transition_applied', session.state, {
       from: transition.from,
@@ -1554,7 +1558,10 @@ export class PipelineOrchestrator {
     state?: PipelineState,
     details?: Record<string, unknown>,
     confidenceProfileId?: string,
-    decisionGate?: ConfidenceGate
+    decisionGate?: ConfidenceGate,
+    interactionType?: PipelineInteractionType,
+    decisionAction?: PipelineDecisionAction,
+    decisionComment?: string
   ): void {
     const event = createPipelineEvent(
       {
@@ -1564,6 +1571,9 @@ export class PipelineOrchestrator {
         state,
         confidenceProfileId,
         decisionGate,
+        interactionType,
+        decisionAction,
+        decisionComment,
         details
       },
       this.now

@@ -12,6 +12,7 @@ import {
   buildConfidenceExplainability,
   type ConfidenceExplainability
 } from '../pipeline/confidence/explainability';
+import { PIPELINE_EVENT_SCHEMA_VERSION } from '../pipeline/events';
 import type { PlanMode } from '../pipeline/contracts';
 import type { PlanReviewBundle, ScenarioPlanRecord } from '../pipeline/planning/planContracts';
 import { buildPlanReviewBundle } from '../pipeline/planning/scenarioGrouping';
@@ -112,13 +113,20 @@ function emitEvent(
   now: () => Date,
   details?: Record<string, unknown>,
   confidenceProfileId?: string,
-  decisionGate?: ConfidenceGate
+  decisionGate?: ConfidenceGate,
+  decisionAction?: 'approve' | 'reject' | 'continue' | 'cancel',
+  decisionComment?: string
 ): void {
+  const interactionType = stage === 'gate' ? 'gate_decision' : 'ai_interaction';
   const event: PipelineEvent = {
     requestId,
     stage,
     action,
     timestamp: now().toISOString(),
+    schemaVersion: PIPELINE_EVENT_SCHEMA_VERSION,
+    interactionType,
+    decisionAction,
+    decisionComment,
     confidenceProfileId,
     decisionGate,
     details

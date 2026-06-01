@@ -7,7 +7,7 @@ import type { EventSink, PipelineEvent } from './eventSink';
 const DEFAULT_AUDIT_DIR = path.join('.planning', 'logs', 'audit');
 const DEFAULT_RETENTION_DAYS = 14;
 const DEFAULT_MAX_FILE_BYTES = 5_000_000;
-const AUDIT_SCHEMA_VERSION = 'audit.v1';
+const DEFAULT_SCHEMA_VERSION = 'pipeline_event.v1';
 
 const REDACTION_MATCHERS = [
   { id: 'bearer_token', pattern: /Bearer\s+[A-Za-z0-9._~-]+/i },
@@ -137,7 +137,7 @@ export class AuditFileSink implements EventSink {
     const redacted = redactSerializable(event, evidence) as PipelineEvent;
     return {
       ...redacted,
-      schemaVersion: AUDIT_SCHEMA_VERSION,
+      schemaVersion: redacted.schemaVersion ?? DEFAULT_SCHEMA_VERSION,
       persistedAt: this.now().toISOString(),
       redactionEvidence: {
         redacted: true,
