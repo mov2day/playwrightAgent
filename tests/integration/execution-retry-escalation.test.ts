@@ -123,16 +123,16 @@ describe('execution retry escalation', () => {
       suggestedActions: ['approve', 'reject', 'continue', 'cancel']
     });
     expect(result.escalation?.topErrors.length).toBeGreaterThan(0);
-    expect(result.runSummary?.summary.bucketCounts.test_authoring).toBeGreaterThan(0);
+    expect(result.runSummary?.summary.bucketCounts.application_behavior).toBeGreaterThan(0);
     expect(result.runSummary?.expandable.failures[0]).toMatchObject({
-      bucket: 'test_authoring',
-      bucketReason: expect.stringContaining('Assertion wiring')
+      bucket: 'application_behavior',
+      bucketReason: expect.stringContaining('Application/service behavior')
     });
     const escalatedEvent = sink.getEvents().find((event) => event.action === 'execution_run_escalated');
     expect(escalatedEvent?.details?.failureDiagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        bucket: 'test_authoring',
-        bucketReason: expect.stringContaining('Assertion wiring')
+        bucket: 'application_behavior',
+        bucketReason: expect.stringContaining('Application/service behavior')
       })
     ]));
     expect(orchestrator.getSession(requestId)?.state).toBe('awaiting_guardrail_decision');

@@ -23,7 +23,10 @@ import {
   buildExecutionRunSummary,
   type ExecutionRunSummaryReport
 } from './execution/reportSummarizer';
-import type { ExecutionFailureInput } from './execution/failureClassifier';
+import type {
+  ExecutionFailureBucket,
+  ExecutionFailureInput
+} from './execution/failureClassifier';
 import {
   runPostWriteLintTypeGuardrail,
   type LintTypeGuardrailRunResult,
@@ -208,6 +211,11 @@ export interface ExecuteScopedRunOptions {
 export interface ExecutionRunResult extends ActionTransitionResult {
   run?: ScopedRunExecutionResult;
   runSummary?: ExecutionRunSummaryReport;
+  failureDiagnostics?: Array<{
+    targetPath: string;
+    bucket: ExecutionFailureBucket;
+    bucketReason: string;
+  }>;
   guardrail?: RetryEscalationOutcome;
   escalation?: LintTypeEscalationBundle;
 }
@@ -580,6 +588,18 @@ function buildExecutionSummaryFromRun(
     failCount,
     failures
   });
+}
+
+function toFailureDiagnostics(runSummary: ExecutionRunSummaryReport): Array<{
+  targetPath: string;
+  bucket: ExecutionFailureBucket;
+  bucketReason: string;
+}> {
+  return runSummary.expandable.failures.map((failure) => ({
+    targetPath: failure.targetPath,
+    bucket: failure.bucket,
+    bucketReason: failure.bucketReason
+  }));
 }
 
 export class PipelineOrchestrator {
@@ -1517,6 +1537,7 @@ export class PipelineOrchestrator {
     const initialRun = await runExecutor();
     let lastRun = initialRun;
     let runSummary = buildExecutionSummaryFromRun(requestId, initialRun);
+    let failureDiagnostics = toFailureDiagnostics(runSummary);
     const initialGuardrailResult = toExecutionGuardrailResult(initialRun);
 
     const guardrail = await resolveLintTypeRetryEscalation({
@@ -1535,6 +1556,7 @@ export class PipelineOrchestrator {
         }, session.confidenceProfileId, session.decisionGate);
         lastRun = await runExecutor();
         runSummary = buildExecutionSummaryFromRun(requestId, lastRun);
+        failureDiagnostics = toFailureDiagnostics(runSummary);
         return toExecutionGuardrailResult(lastRun);
       }
     });
@@ -1548,7 +1570,8 @@ export class PipelineOrchestrator {
           from: session.state,
           errorCode: blockedTransition.errorCode,
           run: lastRun,
-          runSummary
+          runSummary,
+          failureDiagnostics
         };
       }
 
@@ -1571,7 +1594,8 @@ export class PipelineOrchestrator {
         affectedFiles: guardrail.escalation?.affectedFiles,
         attemptedFixSummary: guardrail.escalation?.attemptedFixSummary,
         suggestedActions: guardrail.escalation?.suggestedActions,
-        runSummary: runSummary.summary
+        runSummary: runSummary.summary,
+        failureDiagnostics
       }, session.confidenceProfileId, session.decisionGate);
 
       return {
@@ -1582,6 +1606,7 @@ export class PipelineOrchestrator {
         errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
         run: lastRun,
         runSummary,
+        failureDiagnostics,
         guardrail,
         escalation: guardrail.escalation
       };
@@ -1595,7 +1620,8 @@ export class PipelineOrchestrator {
       scopeMode: lastRun.scopeMode,
       targetCount: lastRun.targets.length,
       retryAttempts: guardrail.retry.attempts,
-      runSummary: runSummary.summary
+      runSummary: runSummary.summary,
+      failureDiagnostics
     }, session.confidenceProfileId, session.decisionGate);
 
     return {
@@ -1605,6 +1631,7 @@ export class PipelineOrchestrator {
       to: session.state,
       run: lastRun,
       runSummary,
+      failureDiagnostics,
       guardrail
     };
   }
