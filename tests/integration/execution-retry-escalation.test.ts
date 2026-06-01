@@ -43,7 +43,7 @@ describe('execution retry escalation', () => {
 
     const result = await orchestrator.executeScopedRun(requestId, {
       generatedOrUpdatedTargets: ['tests/e2e/new-login.spec.ts'],
-      commandRunner: async (command, args) => {
+      commandRunner: async (command: string, args: string[]) => {
         runCalls.push({ command, args });
         attempts += 1;
         if (attempts === 1) {
@@ -63,7 +63,7 @@ describe('execution retry escalation', () => {
           error: undefined
         });
       },
-      applyScopedAutoFix: async (targetFiles) => {
+      applyScopedAutoFix: async (targetFiles: readonly string[]) => {
         scopedFixTargets.push([...targetFiles]);
         return {
           ok: true,
@@ -101,13 +101,13 @@ describe('execution retry escalation', () => {
         'tests/e2e/new-login.spec.ts',
         'tests/e2e/new-checkout.spec.ts'
       ],
-      commandRunner: async (command, args) => makeCommandResult({
+      commandRunner: async (command: string, args: string[]) => makeCommandResult({
         command,
         args,
         stderr: 'expect(received).toBe(200) // received 500',
         error: 'received 500'
       }),
-      applyScopedAutoFix: async (targetFiles) => ({
+      applyScopedAutoFix: async (targetFiles: readonly string[]) => ({
         ok: false,
         summary: `Scoped fix failed for ${targetFiles.length} generated|updated files.`
       })
@@ -149,7 +149,7 @@ describe('execution retry escalation', () => {
 
     const escalated = await orchestrator.executeScopedRun(requestId, {
       generatedOrUpdatedTargets: ['tests/e2e/profile.spec.ts'],
-      commandRunner: async (command, args) => {
+      commandRunner: async (command: string, args: string[]) => {
         initialCommands.push([command, ...args].join(' '));
         return makeCommandResult({
           command,
@@ -228,7 +228,7 @@ describe('execution retry escalation', () => {
 
       const escalated = await orchestrator.executeScopedRun(requestId, {
         generatedOrUpdatedTargets: ['tests/e2e/profile.spec.ts'],
-        commandRunner: async (command, args) => makeCommandResult({
+        commandRunner: async (command: string, args: string[]) => makeCommandResult({
           command,
           args,
           stderr: 'still failing',
