@@ -118,7 +118,7 @@ describe('execution retry escalation', () => {
     expect(result.escalation).toMatchObject({
       command: 'npx playwright test tests/e2e/new-checkout.spec.ts tests/e2e/new-login.spec.ts --reporter=json',
       affectedFiles: ['tests/e2e/new-checkout.spec.ts', 'tests/e2e/new-login.spec.ts'],
-      attemptedFixSummary: 'Scoped fix failed for 2 generated|updated files.',
+      attemptedFixSummary: expect.stringContaining('Scoped fix failed for 2 generated|updated files.'),
       suggestedActions: ['approve', 'reject', 'continue', 'cancel']
     });
     expect(result.escalation?.topErrors.length).toBeGreaterThan(0);

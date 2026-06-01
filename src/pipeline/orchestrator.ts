@@ -12,6 +12,7 @@ import {
 } from './execution/scopedRunExecutor';
 import {
   runPostWriteLintTypeGuardrail,
+  type LintTypeGuardrailRunResult,
   type LintTypeRunnerDeps
 } from './guardrails/lintTypeRunner';
 import {
@@ -185,10 +186,13 @@ export interface ExecuteScopedRunOptions {
   updatedTargets?: readonly string[];
   generatedOrUpdatedTargets?: readonly string[];
   commandRunner?: ScopedRunExecutorDeps['commandRunner'];
+  applyScopedAutoFix?: (targetFiles: readonly string[]) => Promise<ScopedAutoFixResult>;
 }
 
 export interface ExecutionRunResult extends ActionTransitionResult {
   run?: ScopedRunExecutionResult;
+  guardrail?: RetryEscalationOutcome;
+  escalation?: LintTypeEscalationBundle;
 }
 
 export type StageEntryGateEvaluator = (stage: SkillGateStage) => SkillQualityGateResult;
@@ -244,6 +248,29 @@ function collectGeneratedOrUpdatedTargets(report: WriteReport): string[] {
       .filter((outcome) => outcome.status === 'patched' || outcome.status === 'created')
       .map((outcome) => outcome.targetPath)
   );
+}
+
+function toExecutionGuardrailResult(runResult: ScopedRunExecutionResult): LintTypeGuardrailRunResult {
+  const stageResult = {
+    stage: 'lint' as const,
+    startedAt: runResult.startedAt,
+    completedAt: runResult.completedAt,
+    durationMs: runResult.durationMs,
+    result: runResult.result
+  };
+
+  if (runResult.result.ok) {
+    return {
+      status: 'passed',
+      stageResults: [stageResult]
+    };
+  }
+
+  return {
+    status: 'failed_needs_retry',
+    stageResults: [stageResult],
+    failedStage: 'lint'
+  };
 }
 
 export class PipelineOrchestrator {
@@ -1075,33 +1102,79 @@ export class PipelineOrchestrator {
       full_suite_opt_in: runRequest.scopeMode === 'full_suite_opt_in'
     }, session.confidenceProfileId, session.decisionGate);
 
-    const run = await runScopedExecution(runRequest, {
+    const runExecutor = async () => runScopedExecution(runRequest, {
       commandRunner: options.commandRunner,
       now: this.now,
       emitEvent: (event) => this.eventSink.emit(event)
     });
 
-    if (!run.result.ok) {
-      this.emit(requestId, 'orchestrator', 'execution_run_failed', session.state, {
-        scopeMode: run.scopeMode,
-        targetCount: run.targets.length,
-        exitCode: run.result.exitCode,
-        timedOut: run.result.timedOut
+    const initialRun = await runExecutor();
+    let lastRun = initialRun;
+    const initialGuardrailResult = toExecutionGuardrailResult(initialRun);
+
+    const guardrail = await resolveLintTypeRetryEscalation({
+      requestId,
+      initialGuardrailResult,
+      targetFiles: runRequest.targets,
+      maxAttempts: 1, // one-shot retry boundary for execution remediation.
+      applyScopedAutoFix: options.applyScopedAutoFix ?? (async (targetFiles) => ({
+        ok: false,
+        summary: `No scoped auto-fix configured for ${targetFiles.length} generated|updated targets.`
+      })),
+      rerunGuardrail: async () => {
+        this.emit(requestId, 'orchestrator', 'execution_run_retry_attempted', session.state, {
+          scopeMode: runRequest.scopeMode,
+          targetCount: runRequest.targets.length
+        }, session.confidenceProfileId, session.decisionGate);
+        lastRun = await runExecutor();
+        return toExecutionGuardrailResult(lastRun);
+      }
+    });
+
+    if (guardrail.status === 'escalated') {
+      const blockedTransition = transitionState(session.state, 'awaiting_guardrail_decision');
+      if (!blockedTransition.ok) {
+        return {
+          ok: false,
+          requestId,
+          from: session.state,
+          errorCode: blockedTransition.errorCode,
+          run: lastRun
+        };
+      }
+
+      session.state = blockedTransition.to;
+      session.pendingGuardrailEscalation = guardrail.escalation;
+      session.updatedAt = this.now().toISOString();
+
+      this.emit(requestId, 'orchestrator', 'execution_run_escalated', session.state, {
+        guardrail_failed: true,
+        blocked_state: session.state,
+        command: guardrail.escalation?.command,
+        topErrors: guardrail.escalation?.topErrors,
+        affectedFiles: guardrail.escalation?.affectedFiles,
+        attemptedFixSummary: guardrail.escalation?.attemptedFixSummary,
+        suggestedActions: guardrail.escalation?.suggestedActions
       }, session.confidenceProfileId, session.decisionGate);
 
       return {
         ok: false,
         requestId,
-        from: session.state,
-        to: session.state,
-        errorCode: 'EXECUTION_RUN_FAILED',
-        run
+        from: blockedTransition.from,
+        to: blockedTransition.to,
+        errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
+        run: lastRun,
+        guardrail,
+        escalation: guardrail.escalation
       };
     }
 
+    session.pendingGuardrailEscalation = undefined;
+
     this.emit(requestId, 'orchestrator', 'execution_run_succeeded', session.state, {
-      scopeMode: run.scopeMode,
-      targetCount: run.targets.length
+      scopeMode: lastRun.scopeMode,
+      targetCount: lastRun.targets.length,
+      retryAttempts: guardrail.retry.attempts
     }, session.confidenceProfileId, session.decisionGate);
 
     return {
@@ -1109,7 +1182,8 @@ export class PipelineOrchestrator {
       requestId,
       from: session.state,
       to: session.state,
-      run
+      run: lastRun,
+      guardrail
     };
   }
 
