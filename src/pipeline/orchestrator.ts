@@ -1,4 +1,5 @@
 import type { EventSink } from '../adapters/eventSink';
+import type { LocalToolCommandResult } from '../adapters/localToolRunner';
 import { QUICK_ACTIONS, type QuickAction } from '../participant/actions';
 import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
@@ -18,6 +19,11 @@ import {
   type ScopedRunExecutionResult,
   type ScopedRunExecutorDeps
 } from './execution/scopedRunExecutor';
+import {
+  buildExecutionRunSummary,
+  type ExecutionRunSummaryReport
+} from './execution/reportSummarizer';
+import type { ExecutionFailureInput } from './execution/failureClassifier';
 import {
   runPostWriteLintTypeGuardrail,
   type LintTypeGuardrailRunResult,
@@ -201,6 +207,7 @@ export interface ExecuteScopedRunOptions {
 
 export interface ExecutionRunResult extends ActionTransitionResult {
   run?: ScopedRunExecutionResult;
+  runSummary?: ExecutionRunSummaryReport;
   guardrail?: RetryEscalationOutcome;
   escalation?: LintTypeEscalationBundle;
 }
@@ -281,6 +288,298 @@ function toExecutionGuardrailResult(runResult: ScopedRunExecutionResult): LintTy
     stageResults: [stageResult],
     failedStage: 'lint'
   };
+}
+
+interface ParsedExecutionReport {
+  passCount?: number;
+  failCount?: number;
+  totalCount?: number;
+  failures: ExecutionFailureInput[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function asString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized ? normalized : undefined;
+}
+
+function asNonNegativeInteger(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+
+  return Math.floor(value);
+}
+
+function firstNonEmptyLine(value: string): string | undefined {
+  for (const line of value.split(/\r?\n/)) {
+    const normalized = line.trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
+}
+
+function extractLocationPath(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return asString(value.file);
+}
+
+function extractErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return asString(value);
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return asString(value.message)
+    ?? asString(value.value)
+    ?? asString(value.stack)
+    ?? extractErrorMessage(value.error);
+}
+
+function isFailedPlaywrightStatus(status: string | undefined): boolean {
+  if (!status) {
+    return false;
+  }
+
+  const normalized = status.toLowerCase();
+  return normalized === 'failed'
+    || normalized === 'timedout'
+    || normalized === 'timed_out'
+    || normalized === 'interrupted';
+}
+
+function createExecutionFailure(
+  targetPath: string | undefined,
+  message: string,
+  commandResult: LocalToolCommandResult,
+  timedOut: boolean
+): ExecutionFailureInput {
+  return {
+    targetPath: targetPath ?? 'unknown',
+    message,
+    stdout: commandResult.stdout,
+    stderr: commandResult.stderr,
+    exitCode: commandResult.exitCode,
+    timedOut
+  };
+}
+
+function collectFailuresFromTestNode(
+  testNode: Record<string, unknown>,
+  inheritedTargetPath: string | undefined,
+  commandResult: LocalToolCommandResult
+): ExecutionFailureInput[] {
+  const failures: ExecutionFailureInput[] = [];
+  const targetPath = asString(testNode.file)
+    ?? extractLocationPath(testNode.location)
+    ?? inheritedTargetPath;
+  const results = Array.isArray(testNode.results) ? testNode.results : [];
+  const testTitle = asString(testNode.title);
+
+  for (const resultValue of results) {
+    if (!isRecord(resultValue)) {
+      continue;
+    }
+
+    const status = asString(resultValue.status);
+    if (!isFailedPlaywrightStatus(status)) {
+      continue;
+    }
+
+    const message = extractErrorMessage(resultValue.error)
+      ?? extractErrorMessage(testNode.error)
+      ?? testTitle
+      ?? firstNonEmptyLine(commandResult.stderr)
+      ?? commandResult.error
+      ?? 'Playwright run failed with no structured error message.';
+
+    failures.push(createExecutionFailure(
+      targetPath,
+      message,
+      commandResult,
+      commandResult.timedOut || (status?.toLowerCase() === 'timedout')
+    ));
+  }
+
+  if (failures.length > 0) {
+    return failures;
+  }
+
+  const fallbackStatus = asString(testNode.status);
+  if (!isFailedPlaywrightStatus(fallbackStatus)) {
+    return failures;
+  }
+
+  const fallbackMessage = extractErrorMessage(testNode.error)
+    ?? testTitle
+    ?? firstNonEmptyLine(commandResult.stderr)
+    ?? commandResult.error
+    ?? 'Playwright test failed.';
+
+  failures.push(createExecutionFailure(
+    targetPath,
+    fallbackMessage,
+    commandResult,
+    commandResult.timedOut || (fallbackStatus?.toLowerCase() === 'timedout')
+  ));
+  return failures;
+}
+
+function collectFailuresFromSpecNode(
+  specNode: Record<string, unknown>,
+  inheritedTargetPath: string | undefined,
+  commandResult: LocalToolCommandResult
+): ExecutionFailureInput[] {
+  const targetPath = asString(specNode.file)
+    ?? extractLocationPath(specNode.location)
+    ?? inheritedTargetPath;
+  const tests = Array.isArray(specNode.tests) ? specNode.tests : [];
+  const failures: ExecutionFailureInput[] = [];
+
+  for (const testValue of tests) {
+    if (!isRecord(testValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromTestNode(testValue, targetPath, commandResult));
+  }
+
+  return failures;
+}
+
+function collectFailuresFromSuiteNode(
+  suiteNode: Record<string, unknown>,
+  inheritedTargetPath: string | undefined,
+  commandResult: LocalToolCommandResult
+): ExecutionFailureInput[] {
+  const targetPath = asString(suiteNode.file)
+    ?? extractLocationPath(suiteNode.location)
+    ?? inheritedTargetPath;
+  const failures: ExecutionFailureInput[] = [];
+  const specs = Array.isArray(suiteNode.specs) ? suiteNode.specs : [];
+  const childSuites = Array.isArray(suiteNode.suites) ? suiteNode.suites : [];
+
+  for (const specValue of specs) {
+    if (!isRecord(specValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromSpecNode(specValue, targetPath, commandResult));
+  }
+
+  for (const suiteValue of childSuites) {
+    if (!isRecord(suiteValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromSuiteNode(suiteValue, targetPath, commandResult));
+  }
+
+  return failures;
+}
+
+function parseExecutionReport(
+  commandResult: LocalToolCommandResult
+): ParsedExecutionReport {
+  const stdout = commandResult.stdout.trim();
+  if (!stdout) {
+    return { failures: [] };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    return { failures: [] };
+  }
+
+  if (!isRecord(parsed)) {
+    return { failures: [] };
+  }
+
+  const stats = isRecord(parsed.stats) ? parsed.stats : undefined;
+  const passCount = asNonNegativeInteger(stats?.passed)
+    ?? asNonNegativeInteger(stats?.expected);
+  const failCount = asNonNegativeInteger(stats?.failed)
+    ?? asNonNegativeInteger(stats?.unexpected);
+  const totalCount = asNonNegativeInteger(stats?.total);
+  const failures: ExecutionFailureInput[] = [];
+  const suites = Array.isArray(parsed.suites) ? parsed.suites : [];
+
+  for (const suiteValue of suites) {
+    if (!isRecord(suiteValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromSuiteNode(suiteValue, undefined, commandResult));
+  }
+
+  return {
+    passCount,
+    failCount,
+    totalCount,
+    failures
+  };
+}
+
+function buildFallbackFailures(
+  runResult: ScopedRunExecutionResult
+): ExecutionFailureInput[] {
+  if (runResult.result.ok) {
+    return [];
+  }
+
+  const message = firstNonEmptyLine(runResult.result.stderr)
+    ?? firstNonEmptyLine(runResult.result.error ?? '')
+    ?? firstNonEmptyLine(runResult.result.stdout)
+    ?? 'Playwright run failed with no diagnostics.';
+  const fallbackTargets = runResult.targets.length > 0
+    ? runResult.targets
+    : ['unknown'];
+
+  return fallbackTargets.map((targetPath) => ({
+    targetPath,
+    message,
+    stdout: runResult.result.stdout,
+    stderr: runResult.result.stderr,
+    exitCode: runResult.result.exitCode,
+    timedOut: runResult.result.timedOut
+  }));
+}
+
+function buildExecutionSummaryFromRun(
+  requestId: string,
+  runResult: ScopedRunExecutionResult
+): ExecutionRunSummaryReport {
+  const parsed = parseExecutionReport(runResult.result);
+  const failures = parsed.failures.length > 0
+    ? parsed.failures
+    : buildFallbackFailures(runResult);
+  const failCount = parsed.failCount ?? failures.length;
+  const passCount = parsed.passCount
+    ?? (typeof parsed.totalCount === 'number'
+      ? Math.max(0, parsed.totalCount - failCount)
+      : (runResult.result.ok ? Math.max(0, runResult.targets.length - failCount) : 0));
+
+  return buildExecutionRunSummary({
+    requestId,
+    commandResult: runResult.result,
+    passCount,
+    failCount,
+    failures
+  });
 }
 
 export class PipelineOrchestrator {
@@ -1217,6 +1516,7 @@ export class PipelineOrchestrator {
 
     const initialRun = await runExecutor();
     let lastRun = initialRun;
+    let runSummary = buildExecutionSummaryFromRun(requestId, initialRun);
     const initialGuardrailResult = toExecutionGuardrailResult(initialRun);
 
     const guardrail = await resolveLintTypeRetryEscalation({
@@ -1234,6 +1534,7 @@ export class PipelineOrchestrator {
           targetCount: runRequest.targets.length
         }, session.confidenceProfileId, session.decisionGate);
         lastRun = await runExecutor();
+        runSummary = buildExecutionSummaryFromRun(requestId, lastRun);
         return toExecutionGuardrailResult(lastRun);
       }
     });
@@ -1246,7 +1547,8 @@ export class PipelineOrchestrator {
           requestId,
           from: session.state,
           errorCode: blockedTransition.errorCode,
-          run: lastRun
+          run: lastRun,
+          runSummary
         };
       }
 
@@ -1268,7 +1570,8 @@ export class PipelineOrchestrator {
         topErrors: guardrail.escalation?.topErrors,
         affectedFiles: guardrail.escalation?.affectedFiles,
         attemptedFixSummary: guardrail.escalation?.attemptedFixSummary,
-        suggestedActions: guardrail.escalation?.suggestedActions
+        suggestedActions: guardrail.escalation?.suggestedActions,
+        runSummary: runSummary.summary
       }, session.confidenceProfileId, session.decisionGate);
 
       return {
@@ -1278,6 +1581,7 @@ export class PipelineOrchestrator {
         to: blockedTransition.to,
         errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
         run: lastRun,
+        runSummary,
         guardrail,
         escalation: guardrail.escalation
       };
@@ -1290,7 +1594,8 @@ export class PipelineOrchestrator {
     this.emit(requestId, 'orchestrator', 'execution_run_succeeded', session.state, {
       scopeMode: lastRun.scopeMode,
       targetCount: lastRun.targets.length,
-      retryAttempts: guardrail.retry.attempts
+      retryAttempts: guardrail.retry.attempts,
+      runSummary: runSummary.summary
     }, session.confidenceProfileId, session.decisionGate);
 
     return {
@@ -1299,6 +1604,7 @@ export class PipelineOrchestrator {
       from: session.state,
       to: session.state,
       run: lastRun,
+      runSummary,
       guardrail
     };
   }
