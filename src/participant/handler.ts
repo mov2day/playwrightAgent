@@ -17,7 +17,13 @@ import type { PlanReviewBundle, ScenarioPlanRecord } from '../pipeline/planning/
 import { buildPlanReviewBundle } from '../pipeline/planning/scenarioGrouping';
 import { buildScenarioPlan, type RequirementScenarioInput } from '../pipeline/planning/scenarioMapper';
 import { formatPlanChatSummary } from '../pipeline/planning/planSummary';
-import type { ActionTransitionResult, PipelineOrchestrator, StageEntryDecision } from '../pipeline/orchestrator';
+import type {
+  ActionTransitionResult,
+  ExecuteScopedRunOptions,
+  ExecutionRunResult,
+  PipelineOrchestrator,
+  StageEntryDecision
+} from '../pipeline/orchestrator';
 import type { PipelineState } from '../pipeline/stateMachine';
 import { createPreviewApproveAllAction } from '../ui/previewActions';
 import { parseSlashPlanInput } from './slashPlanParser';
@@ -607,6 +613,43 @@ export function handlePreviewApproveAll(
   );
 
   return orchestrator.applyPreviewAction(requestId, action);
+}
+
+export function handleGuardrailDecision(
+  requestId: string,
+  action: QuickAction,
+  comment: string | undefined,
+  deps: ParticipantHandlerDeps = {}
+): ActionTransitionResult {
+  const orchestrator = deps.orchestrator;
+  if (!orchestrator) {
+    return {
+      ok: false,
+      requestId,
+      from: 'initialized',
+      errorCode: 'UNKNOWN_REQUEST'
+    };
+  }
+
+  return orchestrator.applyGuardrailDecision(requestId, action, comment);
+}
+
+export async function handleExecutionRunRequest(
+  requestId: string,
+  options: ExecuteScopedRunOptions = {},
+  deps: ParticipantHandlerDeps = {}
+): Promise<ExecutionRunResult> {
+  const orchestrator = deps.orchestrator;
+  if (!orchestrator) {
+    return {
+      ok: false,
+      requestId,
+      from: 'initialized',
+      errorCode: 'UNKNOWN_REQUEST'
+    };
+  }
+
+  return orchestrator.executeScopedRun(requestId, options);
 }
 
 export function createParticipantRequestHandler(deps: ParticipantHandlerDeps = {}) {
