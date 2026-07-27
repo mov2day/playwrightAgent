@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: mov2day/assertiq@v0.1.4
+      - uses: mov2day/assertiq@v0.1.5
         with:
           fail-below: C
           post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
