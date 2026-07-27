@@ -16,35 +16,35 @@
     <div>
       <div class="eyebrow mono">Static test intelligence</div>
       <h1>Test suite report card</h1>
-      <p class="muted">playwrightagent-extension-foundation - 34 test file(s) - 93 test(s)</p>
+      <p class="muted">playwrightagent-extension-foundation - 42 test file(s) - 127 test(s)</p>
     </div>
-    <div class="score"><div class="grade">A-</div><div class="num mono">92/100</div><div class="delta flat mono">→ 0</div><svg class="spark" width="176" height="36" viewBox="0 0 176 36" role="img" aria-label="Score trend"><path d="M2.0 4.6 L59.3 4.6 L116.7 4.6 L174.0 4.6" fill="none" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/></svg></div>
+    <div class="score"><div class="grade">A-</div><div class="num mono">92/100</div><div class="delta flat mono">→ 0</div><svg class="spark" width="176" height="36" viewBox="0 0 176 36" role="img" aria-label="Score trend"><path d="M2.0 4.6 L45.0 4.6 L88.0 4.6 L131.0 4.6 L174.0 4.6" fill="none" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/></svg></div>
   </section>
   <section class="grid">
-    <article class="card"><div class="dim-name">Assertion Quality</div><div class="dim-score" style="color:#a78bfa">A+</div><div class="muted mono">99/100 - 1 risk(s)</div><div class="bar"><div class="fill" style="width:99%"></div></div></article><article class="card"><div class="dim-name">Flakiness Risk</div><div class="dim-score" style="color:#f7c948">B+</div><div class="muted mono">88/100 - 19 risk(s)</div><div class="bar"><div class="fill" style="width:88%"></div></div></article><article class="card"><div class="dim-name">Isolation Risk</div><div class="dim-score" style="color:#7bc4ff">A+</div><div class="muted mono">100/100 - 0 risk(s)</div><div class="bar"><div class="fill" style="width:100%"></div></div></article><article class="card"><div class="dim-name">Naming Clarity</div><div class="dim-score" style="color:#4f8ef7">B</div><div class="muted mono">82/100 - 57 risk(s)</div><div class="bar"><div class="fill" style="width:82%"></div></div></article><article class="card"><div class="dim-name">Coverage Balance</div><div class="dim-score" style="color:#5ee8a0">B+</div><div class="muted mono">88/100 - 21 risk(s)</div><div class="bar"><div class="fill" style="width:88%"></div></div></article><article class="card"><div class="dim-name">Dead Test Risk</div><div class="dim-score" style="color:#f76f6f">A+</div><div class="muted mono">100/100 - 0 risk(s)</div><div class="bar"><div class="fill" style="width:100%"></div></div></article>
+    <article class="card"><div class="dim-name">Assertion Quality</div><div class="dim-score" style="color:#a78bfa">A+</div><div class="muted mono">100/100 - 1 risk(s)</div><div class="bar"><div class="fill" style="width:100%"></div></div></article><article class="card"><div class="dim-name">Flakiness Risk</div><div class="dim-score" style="color:#f7c948">B</div><div class="muted mono">83/100 - 37 risk(s)</div><div class="bar"><div class="fill" style="width:83%"></div></div></article><article class="card"><div class="dim-name">Isolation Risk</div><div class="dim-score" style="color:#7bc4ff">A+</div><div class="muted mono">100/100 - 1 risk(s)</div><div class="bar"><div class="fill" style="width:100%"></div></div></article><article class="card"><div class="dim-name">Naming Clarity</div><div class="dim-score" style="color:#4f8ef7">B</div><div class="muted mono">82/100 - 77 risk(s)</div><div class="bar"><div class="fill" style="width:82%"></div></div></article><article class="card"><div class="dim-name">Coverage Balance</div><div class="dim-score" style="color:#5ee8a0">A-</div><div class="muted mono">91/100 - 19 risk(s)</div><div class="bar"><div class="fill" style="width:91%"></div></div></article><article class="card"><div class="dim-name">Dead Test Risk</div><div class="dim-score" style="color:#f76f6f">A+</div><div class="muted mono">100/100 - 0 risk(s)</div><div class="bar"><div class="fill" style="width:100%"></div></div></article>
   </section>
   <section class="section">
     <h2>Top risks</h2>
     <div class="issues"><article class="issue warn">
     <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/integration/activation.test.ts:15 - extension activation &gt; registers PlaywrightAgent participant exactly once</div>
-    <div class="muted">2 runnable tests, no edge/error names</div>
+    <div class="loc mono">tests/integration/activation.test.ts:19 - extension activation &gt; registers PlaywrightAgent participant exactly once</div>
+    <div class="muted">8 runnable tests, no edge/error names</div>
     <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
   </article><article class="issue ">
     <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/integration/activation.test.ts:15 - extension activation &gt; registers PlaywrightAgent participant exactly once</div>
+    <div class="loc mono">tests/integration/activation.test.ts:19 - extension activation &gt; registers PlaywrightAgent participant exactly once</div>
     <div class="muted">registers PlaywrightAgent participant exactly once</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue ">
     <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/integration/activation.test.ts:42 - extension activation &gt; wires a callable handler through participant registration</div>
+    <div class="loc mono">tests/integration/activation.test.ts:46 - extension activation &gt; wires a callable handler through participant registration</div>
     <div class="muted">wires a callable handler through participant registration</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue ">
-    <div class="issue-head"><strong>Single-test file may leave behavior branches unrepresented.</strong><span class="tag mono">coverage-single-test-file</span></div>
-    <div class="loc mono">tests/integration/approval-sync-flow.test.ts:10 - approval synchronization flow &gt; keeps one orchestrator source of truth for per-scenario and bulk approvals</div>
-    <div class="muted">1 test in file</div>
-    <div class="muted"><strong>Fix:</strong> Add coverage for the important branches, errors, and boundary conditions.</div>
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/activation.test.ts:180 - extension activation &gt; does not penalize no-ticket mode with Jira/Confluence component scores</div>
+    <div class="muted">does not penalize no-ticket mode with Jira/Confluence component scores</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
     <div class="loc mono">tests/integration/approval-sync-flow.test.ts:10 - approval synchronization flow &gt; keeps one orchestrator source of truth for per-scenario and bulk approvals</div>
@@ -55,6 +55,36 @@
     <div class="loc mono">tests/integration/approval-sync-flow.test.ts:10 - approval synchronization flow &gt; keeps one orchestrator source of truth for per-scenario and bulk approvals</div>
     <div class="muted">keeps one orchestrator source of truth for per-scenario and bulk approvals</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/audit-persistence-request-correlation.test.ts:27 - audit persistence request correlation &gt; persists schema-versioned ai_interaction and gate_decision records with request correlation fields</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/audit-persistence-request-correlation.test.ts:27 - audit persistence request correlation &gt; persists schema-versioned ai_interaction and gate_decision records with request correlation fields</div>
+    <div class="muted">persists schema-versioned ai_interaction and gate_decision records with request correlation fields</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
+    <div class="loc mono">tests/integration/audit-redaction-persistence.test.ts:10 - audit redaction persistence &gt; persists request-scoped redacted NDJSON with deterministic evidence</div>
+    <div class="muted">2 runnable tests, no edge/error names</div>
+    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/audit-redaction-persistence.test.ts:10 - audit redaction persistence &gt; persists request-scoped redacted NDJSON with deterministic evidence</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/audit-redaction-persistence.test.ts:10 - audit redaction persistence &gt; persists request-scoped redacted NDJSON with deterministic evidence</div>
+    <div class="muted">persists request-scoped redacted NDJSON with deterministic evidence</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/audit-redaction-persistence.test.ts:71 - audit redaction persistence &gt; rotates request audit file when max bytes exceeded</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
     <div class="loc mono">tests/integration/confidence-gate-flow.test.ts:22 - confidence gate flow &gt; reject under 40</div>
@@ -72,13 +102,13 @@
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
-    <div class="loc mono">tests/integration/confidence-gate-flow.test.ts:74 - confidence gate flow &gt; continue above 70</div>
+    <div class="loc mono">tests/integration/confidence-gate-flow.test.ts:74 - confidence gate flow &gt; still requires explicit plan approval above 70</div>
     <div class="muted">1 time-dependent call(s)</div>
     <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue ">
     <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/integration/confidence-gate-flow.test.ts:74 - confidence gate flow &gt; continue above 70</div>
-    <div class="muted">continue above 70</div>
+    <div class="loc mono">tests/integration/confidence-gate-flow.test.ts:74 - confidence gate flow &gt; still requires explicit plan approval above 70</div>
+    <div class="muted">still requires explicit plan approval above 70</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
@@ -97,24 +127,69 @@
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
-    <div class="loc mono">tests/integration/execution-run-flow.test.ts:24 - execution run flow &gt; emits execution_command_preview before execution_run_started for generated/updated scope</div>
+    <div class="loc mono">tests/integration/execution-retry-escalation.test.ts:23 - execution retry escalation &gt; attempts exactly one scoped auto-fix retry before succeeding</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/execution-retry-escalation.test.ts:82 - execution retry escalation &gt; returns escalation bundle and blocks flow when one-shot retry still fails</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/execution-retry-escalation.test.ts:141 - execution retry escalation &gt; continue records manual fix and reruns identical scoped command</div>
     <div class="muted">1 time-dependent call(s)</div>
     <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue ">
     <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/integration/execution-run-flow.test.ts:24 - execution run flow &gt; emits execution_command_preview before execution_run_started for generated/updated scope</div>
+    <div class="loc mono">tests/integration/execution-retry-escalation.test.ts:141 - execution retry escalation &gt; continue records manual fix and reruns identical scoped command</div>
+    <div class="muted">continue records manual fix and reruns identical scoped command</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/execution-retry-escalation.test.ts:221 - execution retry escalation &gt; approve/reject/cancel produce explicit execution decision events</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:55 - execution run flow &gt; emits execution_command_preview before execution_run_started for generated/updated scope</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:55 - execution run flow &gt; emits execution_command_preview before execution_run_started for generated/updated scope</div>
     <div class="muted">emits execution_command_preview before execution_run_started for generated/updated scope</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue ">
     <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/integration/execution-run-flow.test.ts:76 - execution run flow &gt; runs full suite only with explicit full_suite_opt_in scopeMode</div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:107 - execution run flow &gt; runs full suite only with explicit full_suite_opt_in scopeMode</div>
     <div class="muted">runs full suite only with explicit full_suite_opt_in scopeMode</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue ">
-    <div class="issue-head"><strong>Single-test file may leave behavior branches unrepresented.</strong><span class="tag mono">coverage-single-test-file</span></div>
-    <div class="loc mono">tests/integration/free-text-revision-flow.test.ts:10 - free-text revision loop &gt; classifies chat comments and routes targeted regeneration</div>
-    <div class="muted">1 test in file</div>
-    <div class="muted"><strong>Fix:</strong> Add coverage for the important branches, errors, and boundary conditions.</div>
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:138 - execution run flow &gt; passes workspace cwd into scoped execution runner</div>
+    <div class="muted">passes workspace cwd into scoped execution runner</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:180 - execution run flow &gt; runs scoped execution from participant trigger only after write completion</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:180 - execution run flow &gt; runs scoped execution from participant trigger only after write completion</div>
+    <div class="muted">runs scoped execution from participant trigger only after write completion</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:233 - execution run flow &gt; blocks participant run trigger before workflow reaches completed state</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/execution-run-flow.test.ts:233 - execution run flow &gt; blocks participant run trigger before workflow reaches completed state</div>
+    <div class="muted">blocks participant run trigger before workflow reaches completed state</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
     <div class="loc mono">tests/integration/free-text-revision-flow.test.ts:10 - free-text revision loop &gt; classifies chat comments and routes targeted regeneration</div>
@@ -155,6 +230,21 @@
     <div class="loc mono">tests/integration/generation-preview-write-flow.test.ts:176 - generation preview write flow &gt; executes surgical write plan with patch, create fallback, and skip outcomes</div>
     <div class="muted">1 time-dependent call(s)</div>
     <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/lint-type-escalation-flow.test.ts:96 - lint/type escalation flow &gt; passes workspace cwd to lint/type command runner</div>
+    <div class="muted">passes workspace cwd to lint/type command runner</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/lint-type-escalation-flow.test.ts:297 - lint/type escalation flow &gt; blocks pipeline in awaiting_guardrail_decision until explicit decision resolves guardrail_failed state</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/lint-type-escalation-flow.test.ts:370 - lint/type escalation flow &gt; accepts only approve/reject/continue/cancel to resolve blocked guardrail escalation</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
     <div class="loc mono">tests/integration/no-ticket-flow.test.ts:7 - no-ticket and soft-fail plan flow &gt; starts guided no-ticket flow for /plan with no args</div>
@@ -170,11 +260,16 @@
     <div class="loc mono">tests/integration/no-ticket-flow.test.ts:26 - no-ticket and soft-fail plan flow &gt; soft-fails invalid ticket token and preserves user context</div>
     <div class="muted">1 time-dependent call(s)</div>
     <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/no-ticket-flow.test.ts:48 - no-ticket and soft-fail plan flow &gt; ignores standalone gate action tokens as plan context</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue ">
-    <div class="issue-head"><strong>Single-test file may leave behavior branches unrepresented.</strong><span class="tag mono">coverage-single-test-file</span></div>
-    <div class="loc mono">tests/integration/plan-chat-summary.test.ts:8 - plan chat summary payload &gt; includes structured summary text and scenario records in response payload</div>
-    <div class="muted">1 test in file</div>
-    <div class="muted"><strong>Fix:</strong> Add coverage for the important branches, errors, and boundary conditions.</div>
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/no-ticket-flow.test.ts:48 - no-ticket and soft-fail plan flow &gt; ignores standalone gate action tokens as plan context</div>
+    <div class="muted">ignores standalone gate action tokens as plan context</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
     <div class="loc mono">tests/integration/plan-chat-summary.test.ts:8 - plan chat summary payload &gt; includes structured summary text and scenario records in response payload</div>
@@ -187,17 +282,87 @@
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
-    <div class="loc mono">tests/integration/request-correlation.test.ts:8 - request correlation across orchestrator events &gt; propagates one requestId through participant, parser, bootstrap, and gate transitions</div>
+    <div class="loc mono">tests/integration/request-correlation.test.ts:12 - request correlation across orchestrator events &gt; propagates one requestId through participant, parser, bootstrap, and gate transitions</div>
     <div class="muted">1 time-dependent call(s)</div>
     <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue ">
     <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/integration/request-correlation.test.ts:8 - request correlation across orchestrator events &gt; propagates one requestId through participant, parser, bootstrap, and gate transitions</div>
+    <div class="loc mono">tests/integration/request-correlation.test.ts:12 - request correlation across orchestrator events &gt; propagates one requestId through participant, parser, bootstrap, and gate transitions</div>
     <div class="muted">propagates one requestId through participant, parser, bootstrap, and gate transitions</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
-    <div class="loc mono">tests/integration/request-correlation.test.ts:67 - request correlation across orchestrator events &gt; rejects unmapped quick actions without mutating state</div>
+    <div class="loc mono">tests/integration/request-correlation.test.ts:71 - request correlation across orchestrator events &gt; rejects unmapped quick actions without mutating state</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/request-correlation.test.ts:93 - request correlation across orchestrator events &gt; uses dual sink by default and persists participant + orchestrator events</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/request-correlation.test.ts:93 - request correlation across orchestrator events &gt; uses dual sink by default and persists participant + orchestrator events</div>
+    <div class="muted">uses dual sink by default and persists participant + orchestrator events</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/runtime-ticket-context-flow.test.ts:25 - runtime ticket context flow &gt; fails closed for ticket mode when Jira tooling is unavailable</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/runtime-ticket-context-flow.test.ts:47 - runtime ticket context flow &gt; builds ticket plan from Jira acceptance criteria and prioritized user context</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/runtime-ticket-context-flow.test.ts:47 - runtime ticket context flow &gt; builds ticket plan from Jira acceptance criteria and prioritized user context</div>
+    <div class="muted">builds ticket plan from Jira acceptance criteria and prioritized user context</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/runtime-ticket-context-flow.test.ts:95 - runtime ticket context flow &gt; routes non-command chat follow-up into active free-text revision flow</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/runtime-ticket-context-flow.test.ts:95 - runtime ticket context flow &gt; routes non-command chat follow-up into active free-text revision flow</div>
+    <div class="muted">routes non-command chat follow-up into active free-text revision flow</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Global state is mutated inside a test without cleanup.</strong><span class="tag mono">isolation-global-mutation</span></div>
+    <div class="loc mono">tests/integration/security-boundary-local-tool-only.test.ts:23 - security boundary local-tool only &gt; keeps local-tool arguments scoped to request data and excludes credential env values</div>
+    <div class="muted">2 global assignment(s) without cleanup</div>
+    <div class="muted"><strong>Fix:</strong> Restore the global value in cleanup or isolate the mutation behind a test helper.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/security-boundary-local-tool-only.test.ts:23 - security boundary local-tool only &gt; keeps local-tool arguments scoped to request data and excludes credential env values</div>
+    <div class="muted">keeps local-tool arguments scoped to request data and excludes credential env values</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/security-boundary-local-tool-only.test.ts:94 - security boundary local-tool only &gt; redacts credential-like values from local-tool failure surfaces</div>
+    <div class="muted">redacts credential-like values from local-tool failure surfaces</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/security-boundary-local-tool-only.test.ts:151 - security boundary local-tool only &gt; propagates workspace cwd to Jira and Confluence local tooling</div>
+    <div class="muted">propagates workspace cwd to Jira and Confluence local tooling</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/security-boundary-local-tool-only.test.ts:212 - security boundary local-tool only &gt; does not serialize raw secret values in participant/orchestrator event details</div>
+    <div class="muted">1 time-dependent call(s)</div>
+    <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
+  </article><article class="issue ">
+    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
+    <div class="loc mono">tests/integration/security-boundary-local-tool-only.test.ts:212 - security boundary local-tool only &gt; does not serialize raw secret values in participant/orchestrator event details</div>
+    <div class="muted">does not serialize raw secret values in participant/orchestrator event details</div>
+    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
+  </article><article class="issue warn">
+    <div class="issue-head"><strong>Wall-clock time usage can make assertions environment-dependent.</strong><span class="tag mono">flaky-time-dependent</span></div>
+    <div class="loc mono">tests/integration/security-leak-canary.test.ts:12 - security leak canary &gt; fails closed when canary secrets hit event and audit persistence paths</div>
     <div class="muted">1 time-dependent call(s)</div>
     <div class="muted"><strong>Fix:</strong> Inject or fake the clock so the test does not depend on the current time.</div>
   </article><article class="issue warn">
@@ -230,11 +395,6 @@
     <div class="loc mono">tests/smoke/preview-shell.test.ts:46 - preview shell rendering &gt; sanitizes summary and patch content before rendering to webview</div>
     <div class="muted">sanitizes summary and patch content before rendering to webview</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Single-test file may leave behavior branches unrepresented.</strong><span class="tag mono">coverage-single-test-file</span></div>
-    <div class="loc mono">tests/smoke/webview-review-tabs.test.ts:9 - review app grouped tabs and actions &gt; renders required tabs and per-scenario/bulk action controls</div>
-    <div class="muted">1 test in file</div>
-    <div class="muted"><strong>Fix:</strong> Add coverage for the important branches, errors, and boundary conditions.</div>
   </article><article class="issue warn">
     <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
     <div class="loc mono">tests/smoke/webview-shell.test.ts:6 - plan review webview shell &gt; renders host shell, react root, and serialized review model</div>
@@ -365,159 +525,9 @@
     <div class="loc mono">tests/unit/generation-workset.test.ts:82 - buildGenerationWorkset &gt; reports excluded scenario ids and counts for auditability</div>
     <div class="muted">reports excluded scenario ids and counts for auditability</div>
     <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/generation-workset.test.ts:101 - buildGenerationWorkset &gt; surfaces regeneration subset without widening generation scope</div>
-    <div class="muted">surfaces regeneration subset without widening generation scope</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/jira-client.test.ts:29 - LocalToolJiraClient &gt; parses successful tool payload into normalized graph output</div>
-    <div class="muted">parses successful tool payload into normalized graph output</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/jira-graph-traversal.test.ts:8 - traverseJiraGraph &gt; task deep fetch</div>
-    <div class="muted">task deep fetch</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/jira-graph-traversal.test.ts:51 - traverseJiraGraph &gt; subtask parent fetch</div>
-    <div class="muted">subtask parent fetch</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/jira-graph-traversal.test.ts:70 - traverseJiraGraph &gt; always fetch epic</div>
-    <div class="muted">always fetch epic</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/unit/marker-ids.test.ts:6 - buildScenarioMarkerId &gt; is deterministic for same scenario and requirement inputs</div>
-    <div class="muted">2 runnable tests, no edge/error names</div>
-    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/marker-ids.test.ts:6 - buildScenarioMarkerId &gt; is deterministic for same scenario and requirement inputs</div>
-    <div class="muted">is deterministic for same scenario and requirement inputs</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Structure-only assertion checks shape more than behavior or values.</strong><span class="tag mono">assertion-structure-only</span></div>
-    <div class="loc mono">tests/unit/plan-contracts.test.ts:31 - plan contracts &gt; exposes required scenario fields and approval state union</div>
-    <div class="muted">structure-only assertions</div>
-    <div class="muted"><strong>Fix:</strong> Assert meaningful values or behavior in addition to the object shape.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/unit/plan-contracts.test.ts:31 - plan contracts &gt; exposes required scenario fields and approval state union</div>
-    <div class="muted">4 runnable tests, no edge/error names</div>
-    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/plan-contracts.test.ts:31 - plan contracts &gt; exposes required scenario fields and approval state union</div>
-    <div class="muted">exposes required scenario fields and approval state union</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/plan-contracts.test.ts:50 - plan contracts &gt; supports risk enum values low/medium/high</div>
-    <div class="muted">supports risk enum values low/medium/high</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/plan-contracts.test.ts:55 - plan contracts &gt; supports approval state enum pending/approved/rejected/needs_revision</div>
-    <div class="muted">supports approval state enum pending/approved/rejected/needs_revision</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/plan-contracts.test.ts:60 - plan contracts &gt; stores flat scenarios and precomputed group indexes in plan bundle</div>
-    <div class="muted">stores flat scenarios and precomputed group indexes in plan bundle</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/unit/preview-contracts.test.ts:7 - preview contracts and deterministic diff builder &gt; requires summary and unified patch data in one canonical payload</div>
-    <div class="muted">2 runnable tests, no edge/error names</div>
-    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/preview-contracts.test.ts:7 - preview contracts and deterministic diff builder &gt; requires summary and unified patch data in one canonical payload</div>
-    <div class="muted">requires summary and unified patch data in one canonical payload</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/preview-contracts.test.ts:67 - preview contracts and deterministic diff builder &gt; builds deterministic unified patches for the same input set</div>
-    <div class="muted">builds deterministic unified patches for the same input set</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/unit/repo-analyzer.test.ts:16 - repo analyzer &gt; detects hybrid pattern signals and returns multi-label summary</div>
-    <div class="muted">4 runnable tests, no edge/error names</div>
-    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/repo-analyzer.test.ts:79 - repo analyzer &gt; framework detector emits framework category finding</div>
-    <div class="muted">framework detector emits framework category finding</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/review-actions.test.ts:18 - review action envelopes &gt; defaults bulk actions to pending_only mode</div>
-    <div class="muted">defaults bulk actions to pending_only mode</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/review-actions.test.ts:28 - review action envelopes &gt; accepts explicit force_override bulk mode</div>
-    <div class="muted">accepts explicit force_override bulk mode</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/unit/scenario-grouping.test.ts:26 - scenario grouping indexes &gt; builds grouped indexes and rejected list</div>
-    <div class="muted">2 runnable tests, no edge/error names</div>
-    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/scenario-grouping.test.ts:26 - scenario grouping indexes &gt; builds grouped indexes and rejected list</div>
-    <div class="muted">builds grouped indexes and rejected list</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/scenario-grouping.test.ts:60 - scenario grouping indexes &gt; produces deterministic sorted flat list in bundle</div>
-    <div class="muted">produces deterministic sorted flat list in bundle</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/skills-quality-gate.test.ts:58 - skills manifest builder &gt; includes allowlisted assets only and reports denied artifacts</div>
-    <div class="muted">includes allowlisted assets only and reports denied artifacts</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/skills-quality-gate.test.ts:85 - skills manifest builder &gt; is deterministic for unchanged content</div>
-    <div class="muted">is deterministic for unchanged content</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/slash-plan-parser.test.ts:6 - parseSlashPlanInput &gt; parses strict ticket plus trailing context</div>
-    <div class="muted">parses strict ticket plus trailing context</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/slash-plan-parser.test.ts:46 - parseSlashPlanInput &gt; supports explicit --ticket syntax</div>
-    <div class="muted">supports explicit --ticket syntax</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue warn">
-    <div class="issue-head"><strong>Suite appears happy-path-only; add error, edge, or invalid-state coverage.</strong><span class="tag mono">coverage-happy-path-only</span></div>
-    <div class="loc mono">tests/unit/spec-placement.test.ts:6 - planSpecPlacements &gt; groups scenarios by functionality into one deterministic spec target</div>
-    <div class="muted">2 runnable tests, no edge/error names</div>
-    <div class="muted"><strong>Fix:</strong> Add at least one error, invalid-state, or edge-case test.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/spec-placement.test.ts:6 - planSpecPlacements &gt; groups scenarios by functionality into one deterministic spec target</div>
-    <div class="muted">groups scenarios by functionality into one deterministic spec target</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
-  </article><article class="issue ">
-    <div class="issue-head"><strong>Test name has weak behavior signal.</strong><span class="tag mono">naming-no-behavior-signal</span></div>
-    <div class="loc mono">tests/unit/spec-placement.test.ts:34 - planSpecPlacements &gt; emits canonical modes for existing and new scoped specs</div>
-    <div class="muted">emits canonical modes for existing and new scoped specs</div>
-    <div class="muted"><strong>Fix:</strong> Include the condition and expected outcome in the test name.</div>
   </article></div>
   </section>
-  
+  <section class="section"><h2>Warnings</h2><pre>7 issue(s) suppressed by assertiq.config.json.</pre></section>
 </main>
 </body>
 </html>

@@ -6,9 +6,9 @@
   "summary": {
     "score": 92,
     "grade": "A-",
-    "testFiles": 34,
-    "tests": 93,
-    "issues": 98,
+    "testFiles": 42,
+    "tests": 127,
+    "issues": 135,
     "frameworks": [
       "vitest"
     ]
@@ -18,7 +18,7 @@
       "id": "assertion-quality",
       "name": "Assertion Quality",
       "weight": 0.28,
-      "score": 99,
+      "score": 100,
       "grade": "A+",
       "issueCount": 1
     },
@@ -26,9 +26,9 @@
       "id": "flakiness-risk",
       "name": "Flakiness Risk",
       "weight": 0.23,
-      "score": 88,
-      "grade": "B+",
-      "issueCount": 19
+      "score": 83,
+      "grade": "B",
+      "issueCount": 37
     },
     {
       "id": "isolation-risk",
@@ -36,7 +36,7 @@
       "weight": 0.1,
       "score": 100,
       "grade": "A+",
-      "issueCount": 0
+      "issueCount": 1
     },
     {
       "id": "naming-clarity",
@@ -44,15 +44,15 @@
       "weight": 0.13,
       "score": 82,
       "grade": "B",
-      "issueCount": 57
+      "issueCount": 77
     },
     {
       "id": "coverage-balance",
       "name": "Coverage Balance",
       "weight": 0.18,
-      "score": 88,
-      "grade": "B+",
-      "issueCount": 21
+      "score": 91,
+      "grade": "A-",
+      "issueCount": 19
     },
     {
       "id": "dead-test-risk",
@@ -69,13 +69,13 @@
       "dimension": "coverage-balance",
       "severity": "medium",
       "message": "Suite appears happy-path-only; add error, edge, or invalid-state coverage.",
-      "evidence": "2 runnable tests, no edge/error names",
+      "evidence": "8 runnable tests, no edge/error names",
       "file": "tests/integration/activation.test.ts",
-      "line": 15,
+      "line": 19,
       "column": 2,
       "testName": "extension activation > registers PlaywrightAgent participant exactly once",
       "remediation": "Add at least one error, invalid-state, or edge-case test.",
-      "id": "125fe5cedaf3"
+      "id": "8060545e2b56"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -84,11 +84,11 @@
       "message": "Test name has weak behavior signal.",
       "evidence": "registers PlaywrightAgent participant exactly once",
       "file": "tests/integration/activation.test.ts",
-      "line": 15,
+      "line": 19,
       "column": 2,
       "testName": "extension activation > registers PlaywrightAgent participant exactly once",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "83e491387fbe"
+      "id": "a32cba1c48fd"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -97,24 +97,24 @@
       "message": "Test name has weak behavior signal.",
       "evidence": "wires a callable handler through participant registration",
       "file": "tests/integration/activation.test.ts",
-      "line": 42,
+      "line": 46,
       "column": 2,
       "testName": "extension activation > wires a callable handler through participant registration",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "5d1be805b5d9"
+      "id": "71eef538747a"
     },
     {
-      "ruleId": "coverage-single-test-file",
-      "dimension": "coverage-balance",
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
       "severity": "low",
-      "message": "Single-test file may leave behavior branches unrepresented.",
-      "evidence": "1 test in file",
-      "file": "tests/integration/approval-sync-flow.test.ts",
-      "line": 10,
+      "message": "Test name has weak behavior signal.",
+      "evidence": "does not penalize no-ticket mode with Jira/Confluence component scores",
+      "file": "tests/integration/activation.test.ts",
+      "line": 180,
       "column": 2,
-      "testName": "approval synchronization flow > keeps one orchestrator source of truth for per-scenario and bulk approvals",
-      "remediation": "Add coverage for the important branches, errors, and boundary conditions.",
-      "id": "8805e965022c"
+      "testName": "extension activation > does not penalize no-ticket mode with Jira/Confluence component scores",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "f0a6afdf3aa1"
     },
     {
       "ruleId": "flaky-time-dependent",
@@ -141,6 +141,84 @@
       "testName": "approval synchronization flow > keeps one orchestrator source of truth for per-scenario and bulk approvals",
       "remediation": "Include the condition and expected outcome in the test name.",
       "id": "2ff083ffc39e"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/audit-persistence-request-correlation.test.ts",
+      "line": 27,
+      "column": 2,
+      "testName": "audit persistence request correlation > persists schema-versioned ai_interaction and gate_decision records with request correlation fields",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "0da9b3411824"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "persists schema-versioned ai_interaction and gate_decision records with request correlation fields",
+      "file": "tests/integration/audit-persistence-request-correlation.test.ts",
+      "line": 27,
+      "column": 2,
+      "testName": "audit persistence request correlation > persists schema-versioned ai_interaction and gate_decision records with request correlation fields",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "c0c9fdd3b130"
+    },
+    {
+      "ruleId": "coverage-happy-path-only",
+      "dimension": "coverage-balance",
+      "severity": "medium",
+      "message": "Suite appears happy-path-only; add error, edge, or invalid-state coverage.",
+      "evidence": "2 runnable tests, no edge/error names",
+      "file": "tests/integration/audit-redaction-persistence.test.ts",
+      "line": 10,
+      "column": 2,
+      "testName": "audit redaction persistence > persists request-scoped redacted NDJSON with deterministic evidence",
+      "remediation": "Add at least one error, invalid-state, or edge-case test.",
+      "id": "b679b9cbf56c"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/audit-redaction-persistence.test.ts",
+      "line": 10,
+      "column": 2,
+      "testName": "audit redaction persistence > persists request-scoped redacted NDJSON with deterministic evidence",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "5b7a5c56c6a1"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "persists request-scoped redacted NDJSON with deterministic evidence",
+      "file": "tests/integration/audit-redaction-persistence.test.ts",
+      "line": 10,
+      "column": 2,
+      "testName": "audit redaction persistence > persists request-scoped redacted NDJSON with deterministic evidence",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "8ba23a0600c0"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/audit-redaction-persistence.test.ts",
+      "line": 71,
+      "column": 2,
+      "testName": "audit redaction persistence > rotates request audit file when max bytes exceeded",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "587e9f5ffaf7"
     },
     {
       "ruleId": "flaky-time-dependent",
@@ -190,22 +268,22 @@
       "file": "tests/integration/confidence-gate-flow.test.ts",
       "line": 74,
       "column": 2,
-      "testName": "confidence gate flow > continue above 70",
+      "testName": "confidence gate flow > still requires explicit plan approval above 70",
       "remediation": "Inject or fake the clock so the test does not depend on the current time.",
-      "id": "d4339e4a176f"
+      "id": "e8b602eb359a"
     },
     {
       "ruleId": "naming-no-behavior-signal",
       "dimension": "naming-clarity",
       "severity": "low",
       "message": "Test name has weak behavior signal.",
-      "evidence": "continue above 70",
+      "evidence": "still requires explicit plan approval above 70",
       "file": "tests/integration/confidence-gate-flow.test.ts",
       "line": 74,
       "column": 2,
-      "testName": "confidence gate flow > continue above 70",
+      "testName": "confidence gate flow > still requires explicit plan approval above 70",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "a613db388761"
+      "id": "5aa022bc03d0"
     },
     {
       "ruleId": "coverage-happy-path-only",
@@ -252,12 +330,77 @@
       "severity": "medium",
       "message": "Wall-clock time usage can make assertions environment-dependent.",
       "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/execution-retry-escalation.test.ts",
+      "line": 23,
+      "column": 2,
+      "testName": "execution retry escalation > attempts exactly one scoped auto-fix retry before succeeding",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "b68a855cb03e"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/execution-retry-escalation.test.ts",
+      "line": 82,
+      "column": 2,
+      "testName": "execution retry escalation > returns escalation bundle and blocks flow when one-shot retry still fails",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "fa90c33636aa"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/execution-retry-escalation.test.ts",
+      "line": 141,
+      "column": 2,
+      "testName": "execution retry escalation > continue records manual fix and reruns identical scoped command",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "920d1ae09d97"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "continue records manual fix and reruns identical scoped command",
+      "file": "tests/integration/execution-retry-escalation.test.ts",
+      "line": 141,
+      "column": 2,
+      "testName": "execution retry escalation > continue records manual fix and reruns identical scoped command",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "edffa27fcafd"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/execution-retry-escalation.test.ts",
+      "line": 221,
+      "column": 2,
+      "testName": "execution retry escalation > approve/reject/cancel produce explicit execution decision events",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "9a553def3050"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
       "file": "tests/integration/execution-run-flow.test.ts",
-      "line": 24,
+      "line": 55,
       "column": 2,
       "testName": "execution run flow > emits execution_command_preview before execution_run_started for generated/updated scope",
       "remediation": "Inject or fake the clock so the test does not depend on the current time.",
-      "id": "48a448612689"
+      "id": "44dde9d6e7c7"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -266,11 +409,11 @@
       "message": "Test name has weak behavior signal.",
       "evidence": "emits execution_command_preview before execution_run_started for generated/updated scope",
       "file": "tests/integration/execution-run-flow.test.ts",
-      "line": 24,
+      "line": 55,
       "column": 2,
       "testName": "execution run flow > emits execution_command_preview before execution_run_started for generated/updated scope",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "b26ad90a55e5"
+      "id": "a7fbf6ece168"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -279,24 +422,76 @@
       "message": "Test name has weak behavior signal.",
       "evidence": "runs full suite only with explicit full_suite_opt_in scopeMode",
       "file": "tests/integration/execution-run-flow.test.ts",
-      "line": 76,
+      "line": 107,
       "column": 2,
       "testName": "execution run flow > runs full suite only with explicit full_suite_opt_in scopeMode",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "f5413f089fee"
+      "id": "ed0383a8255e"
     },
     {
-      "ruleId": "coverage-single-test-file",
-      "dimension": "coverage-balance",
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
       "severity": "low",
-      "message": "Single-test file may leave behavior branches unrepresented.",
-      "evidence": "1 test in file",
-      "file": "tests/integration/free-text-revision-flow.test.ts",
-      "line": 10,
+      "message": "Test name has weak behavior signal.",
+      "evidence": "passes workspace cwd into scoped execution runner",
+      "file": "tests/integration/execution-run-flow.test.ts",
+      "line": 138,
       "column": 2,
-      "testName": "free-text revision loop > classifies chat comments and routes targeted regeneration",
-      "remediation": "Add coverage for the important branches, errors, and boundary conditions.",
-      "id": "b7a0d7ceb623"
+      "testName": "execution run flow > passes workspace cwd into scoped execution runner",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "cc2fce87e3f3"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/execution-run-flow.test.ts",
+      "line": 180,
+      "column": 2,
+      "testName": "execution run flow > runs scoped execution from participant trigger only after write completion",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "62dd684245f0"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "runs scoped execution from participant trigger only after write completion",
+      "file": "tests/integration/execution-run-flow.test.ts",
+      "line": 180,
+      "column": 2,
+      "testName": "execution run flow > runs scoped execution from participant trigger only after write completion",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "5b05b431a380"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/execution-run-flow.test.ts",
+      "line": 233,
+      "column": 2,
+      "testName": "execution run flow > blocks participant run trigger before workflow reaches completed state",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "8788d7b4761d"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "blocks participant run trigger before workflow reaches completed state",
+      "file": "tests/integration/execution-run-flow.test.ts",
+      "line": 233,
+      "column": 2,
+      "testName": "execution run flow > blocks participant run trigger before workflow reaches completed state",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "1091f852413d"
     },
     {
       "ruleId": "flaky-time-dependent",
@@ -403,6 +598,45 @@
       "id": "3c2ec4ebcb5a"
     },
     {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "passes workspace cwd to lint/type command runner",
+      "file": "tests/integration/lint-type-escalation-flow.test.ts",
+      "line": 96,
+      "column": 2,
+      "testName": "lint/type escalation flow > passes workspace cwd to lint/type command runner",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "6b68255bd638"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/lint-type-escalation-flow.test.ts",
+      "line": 297,
+      "column": 2,
+      "testName": "lint/type escalation flow > blocks pipeline in awaiting_guardrail_decision until explicit decision resolves guardrail_failed state",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "d34ee098e87c"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/lint-type-escalation-flow.test.ts",
+      "line": 370,
+      "column": 2,
+      "testName": "lint/type escalation flow > accepts only approve/reject/continue/cancel to resolve blocked guardrail escalation",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "b368955bf543"
+    },
+    {
       "ruleId": "flaky-time-dependent",
       "dimension": "flakiness-risk",
       "severity": "medium",
@@ -442,17 +676,30 @@
       "id": "f580cfbdff52"
     },
     {
-      "ruleId": "coverage-single-test-file",
-      "dimension": "coverage-balance",
-      "severity": "low",
-      "message": "Single-test file may leave behavior branches unrepresented.",
-      "evidence": "1 test in file",
-      "file": "tests/integration/plan-chat-summary.test.ts",
-      "line": 8,
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/no-ticket-flow.test.ts",
+      "line": 48,
       "column": 2,
-      "testName": "plan chat summary payload > includes structured summary text and scenario records in response payload",
-      "remediation": "Add coverage for the important branches, errors, and boundary conditions.",
-      "id": "9389b1e457f4"
+      "testName": "no-ticket and soft-fail plan flow > ignores standalone gate action tokens as plan context",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "bb116d583620"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "ignores standalone gate action tokens as plan context",
+      "file": "tests/integration/no-ticket-flow.test.ts",
+      "line": 48,
+      "column": 2,
+      "testName": "no-ticket and soft-fail plan flow > ignores standalone gate action tokens as plan context",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "a3270fb1a737"
     },
     {
       "ruleId": "flaky-time-dependent",
@@ -487,11 +734,11 @@
       "message": "Wall-clock time usage can make assertions environment-dependent.",
       "evidence": "1 time-dependent call(s)",
       "file": "tests/integration/request-correlation.test.ts",
-      "line": 8,
+      "line": 12,
       "column": 2,
       "testName": "request correlation across orchestrator events > propagates one requestId through participant, parser, bootstrap, and gate transitions",
       "remediation": "Inject or fake the clock so the test does not depend on the current time.",
-      "id": "85582bba593c"
+      "id": "f2f5281806ba"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -500,11 +747,11 @@
       "message": "Test name has weak behavior signal.",
       "evidence": "propagates one requestId through participant, parser, bootstrap, and gate transitions",
       "file": "tests/integration/request-correlation.test.ts",
-      "line": 8,
+      "line": 12,
       "column": 2,
       "testName": "request correlation across orchestrator events > propagates one requestId through participant, parser, bootstrap, and gate transitions",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "5e56f5c794d6"
+      "id": "f3a9f10a2122"
     },
     {
       "ruleId": "flaky-time-dependent",
@@ -513,11 +760,193 @@
       "message": "Wall-clock time usage can make assertions environment-dependent.",
       "evidence": "1 time-dependent call(s)",
       "file": "tests/integration/request-correlation.test.ts",
-      "line": 67,
+      "line": 71,
       "column": 2,
       "testName": "request correlation across orchestrator events > rejects unmapped quick actions without mutating state",
       "remediation": "Inject or fake the clock so the test does not depend on the current time.",
-      "id": "57f373cc068e"
+      "id": "7475e0743e39"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/request-correlation.test.ts",
+      "line": 93,
+      "column": 2,
+      "testName": "request correlation across orchestrator events > uses dual sink by default and persists participant + orchestrator events",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "bec5ed2ed843"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "uses dual sink by default and persists participant + orchestrator events",
+      "file": "tests/integration/request-correlation.test.ts",
+      "line": 93,
+      "column": 2,
+      "testName": "request correlation across orchestrator events > uses dual sink by default and persists participant + orchestrator events",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "a26b3b8c8391"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/runtime-ticket-context-flow.test.ts",
+      "line": 25,
+      "column": 2,
+      "testName": "runtime ticket context flow > fails closed for ticket mode when Jira tooling is unavailable",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "a09ab3dc875e"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/runtime-ticket-context-flow.test.ts",
+      "line": 47,
+      "column": 2,
+      "testName": "runtime ticket context flow > builds ticket plan from Jira acceptance criteria and prioritized user context",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "ed7f146db87d"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "builds ticket plan from Jira acceptance criteria and prioritized user context",
+      "file": "tests/integration/runtime-ticket-context-flow.test.ts",
+      "line": 47,
+      "column": 2,
+      "testName": "runtime ticket context flow > builds ticket plan from Jira acceptance criteria and prioritized user context",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "8319e65e70f9"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/runtime-ticket-context-flow.test.ts",
+      "line": 95,
+      "column": 2,
+      "testName": "runtime ticket context flow > routes non-command chat follow-up into active free-text revision flow",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "e8210f53c764"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "routes non-command chat follow-up into active free-text revision flow",
+      "file": "tests/integration/runtime-ticket-context-flow.test.ts",
+      "line": 95,
+      "column": 2,
+      "testName": "runtime ticket context flow > routes non-command chat follow-up into active free-text revision flow",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "554f5902be93"
+    },
+    {
+      "ruleId": "isolation-global-mutation",
+      "dimension": "isolation-risk",
+      "severity": "medium",
+      "message": "Global state is mutated inside a test without cleanup.",
+      "file": "tests/integration/security-boundary-local-tool-only.test.ts",
+      "line": 23,
+      "column": 2,
+      "testName": "security boundary local-tool only > keeps local-tool arguments scoped to request data and excludes credential env values",
+      "evidence": "2 global assignment(s) without cleanup",
+      "remediation": "Restore the global value in cleanup or isolate the mutation behind a test helper.",
+      "id": "50c01d97c104"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "keeps local-tool arguments scoped to request data and excludes credential env values",
+      "file": "tests/integration/security-boundary-local-tool-only.test.ts",
+      "line": 23,
+      "column": 2,
+      "testName": "security boundary local-tool only > keeps local-tool arguments scoped to request data and excludes credential env values",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "b05239e6cb53"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "redacts credential-like values from local-tool failure surfaces",
+      "file": "tests/integration/security-boundary-local-tool-only.test.ts",
+      "line": 94,
+      "column": 2,
+      "testName": "security boundary local-tool only > redacts credential-like values from local-tool failure surfaces",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "5e35023de96b"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "propagates workspace cwd to Jira and Confluence local tooling",
+      "file": "tests/integration/security-boundary-local-tool-only.test.ts",
+      "line": 151,
+      "column": 2,
+      "testName": "security boundary local-tool only > propagates workspace cwd to Jira and Confluence local tooling",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "83e92f1f02cd"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/security-boundary-local-tool-only.test.ts",
+      "line": 212,
+      "column": 2,
+      "testName": "security boundary local-tool only > does not serialize raw secret values in participant/orchestrator event details",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "58b6830ade3c"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "does not serialize raw secret values in participant/orchestrator event details",
+      "file": "tests/integration/security-boundary-local-tool-only.test.ts",
+      "line": 212,
+      "column": 2,
+      "testName": "security boundary local-tool only > does not serialize raw secret values in participant/orchestrator event details",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "871ae8d0e01f"
+    },
+    {
+      "ruleId": "flaky-time-dependent",
+      "dimension": "flakiness-risk",
+      "severity": "medium",
+      "message": "Wall-clock time usage can make assertions environment-dependent.",
+      "evidence": "1 time-dependent call(s)",
+      "file": "tests/integration/security-leak-canary.test.ts",
+      "line": 12,
+      "column": 2,
+      "testName": "security leak canary > fails closed when canary secrets hit event and audit persistence paths",
+      "remediation": "Inject or fake the clock so the test does not depend on the current time.",
+      "id": "a81ce90a9374"
     },
     {
       "ruleId": "flaky-time-dependent",
@@ -596,19 +1025,6 @@
       "testName": "preview shell rendering > sanitizes summary and patch content before rendering to webview",
       "remediation": "Include the condition and expected outcome in the test name.",
       "id": "164fc6d0d553"
-    },
-    {
-      "ruleId": "coverage-single-test-file",
-      "dimension": "coverage-balance",
-      "severity": "low",
-      "message": "Single-test file may leave behavior branches unrepresented.",
-      "evidence": "1 test in file",
-      "file": "tests/smoke/webview-review-tabs.test.ts",
-      "line": 9,
-      "column": 2,
-      "testName": "review app grouped tabs and actions > renders required tabs and per-scenario/bulk action controls",
-      "remediation": "Add coverage for the important branches, errors, and boundary conditions.",
-      "id": "c0470cf77c4b"
     },
     {
       "ruleId": "coverage-happy-path-only",
@@ -1014,6 +1430,19 @@
       "id": "e66b1ce6d3c0"
     },
     {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "runs commands from provided cwd",
+      "file": "tests/unit/local-tool-runner.test.ts",
+      "line": 25,
+      "column": 2,
+      "testName": "runLocalToolCommand > runs commands from provided cwd",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "b345a867169e"
+    },
+    {
       "ruleId": "coverage-happy-path-only",
       "dimension": "coverage-balance",
       "severity": "medium",
@@ -1161,13 +1590,52 @@
       "dimension": "coverage-balance",
       "severity": "medium",
       "message": "Suite appears happy-path-only; add error, edge, or invalid-state coverage.",
-      "evidence": "4 runnable tests, no edge/error names",
+      "evidence": "2 runnable tests, no edge/error names",
+      "file": "tests/unit/redaction-patterns.test.ts",
+      "line": 6,
+      "column": 2,
+      "testName": "redactSensitiveText > redacts bearer and authorization variants including extended token characters",
+      "remediation": "Add at least one error, invalid-state, or edge-case test.",
+      "id": "e7e12417fcb8"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "redacts bearer and authorization variants including extended token characters",
+      "file": "tests/unit/redaction-patterns.test.ts",
+      "line": 6,
+      "column": 2,
+      "testName": "redactSensitiveText > redacts bearer and authorization variants including extended token characters",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "8b8d9405e3ee"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "redacts header-style and quoted key/value credential patterns",
+      "file": "tests/unit/redaction-patterns.test.ts",
+      "line": 22,
+      "column": 2,
+      "testName": "redactSensitiveText > redacts header-style and quoted key/value credential patterns",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "7fe4c590948d"
+    },
+    {
+      "ruleId": "coverage-happy-path-only",
+      "dimension": "coverage-balance",
+      "severity": "medium",
+      "message": "Suite appears happy-path-only; add error, edge, or invalid-state coverage.",
+      "evidence": "5 runnable tests, no edge/error names",
       "file": "tests/unit/repo-analyzer.test.ts",
-      "line": 16,
+      "line": 39,
       "column": 2,
       "testName": "repo analyzer > detects hybrid pattern signals and returns multi-label summary",
       "remediation": "Add at least one error, invalid-state, or edge-case test.",
-      "id": "87f5b875203b"
+      "id": "24cc5e83d36a"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -1176,11 +1644,24 @@
       "message": "Test name has weak behavior signal.",
       "evidence": "framework detector emits framework category finding",
       "file": "tests/unit/repo-analyzer.test.ts",
-      "line": 79,
+      "line": 102,
       "column": 2,
       "testName": "repo analyzer > framework detector emits framework category finding",
       "remediation": "Include the condition and expected outcome in the test name.",
-      "id": "2b8d99804d48"
+      "id": "909755c1d272"
+    },
+    {
+      "ruleId": "naming-no-behavior-signal",
+      "dimension": "naming-clarity",
+      "severity": "low",
+      "message": "Test name has weak behavior signal.",
+      "evidence": "reuses cached repo analysis until explicit refresh is requested",
+      "file": "tests/unit/repo-analyzer.test.ts",
+      "line": 114,
+      "column": 2,
+      "testName": "repo analyzer > reuses cached repo analysis until explicit refresh is requested",
+      "remediation": "Include the condition and expected outcome in the test name.",
+      "id": "200444f4eabe"
     },
     {
       "ruleId": "naming-no-behavior-signal",
@@ -1467,9 +1948,56 @@
         "flaky-time-dependent": 19,
         "assertion-structure-only": 1
       }
+    },
+    {
+      "sha": "7716ac5fad545a838eb871b5f3f4d7b4e3ff903c",
+      "date": "2026-07-27T21:48:52.108Z",
+      "score": 92,
+      "grade": "A-",
+      "dimensions": [
+        {
+          "id": "assertion-quality",
+          "score": 100,
+          "grade": "A+"
+        },
+        {
+          "id": "flakiness-risk",
+          "score": 83,
+          "grade": "B"
+        },
+        {
+          "id": "isolation-risk",
+          "score": 100,
+          "grade": "A+"
+        },
+        {
+          "id": "naming-clarity",
+          "score": 82,
+          "grade": "B"
+        },
+        {
+          "id": "coverage-balance",
+          "score": 91,
+          "grade": "A-"
+        },
+        {
+          "id": "dead-test-risk",
+          "score": 100,
+          "grade": "A+"
+        }
+      ],
+      "ruleCounts": {
+        "coverage-happy-path-only": 19,
+        "naming-no-behavior-signal": 77,
+        "flaky-time-dependent": 37,
+        "isolation-global-mutation": 1,
+        "assertion-structure-only": 1
+      }
     }
   ],
-  "warnings": [],
+  "warnings": [
+    "7 issue(s) suppressed by assertiq.config.json."
+  ],
   "scoreDelta": {
     "overall": 0,
     "dimensions": [

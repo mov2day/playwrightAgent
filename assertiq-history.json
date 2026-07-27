@@ -126,5 +126,50 @@
       "flaky-time-dependent": 19,
       "assertion-structure-only": 1
     }
+  },
+  {
+    "sha": "7716ac5fad545a838eb871b5f3f4d7b4e3ff903c",
+    "date": "2026-07-27T21:48:52.108Z",
+    "score": 92,
+    "grade": "A-",
+    "dimensions": [
+      {
+        "id": "assertion-quality",
+        "score": 100,
+        "grade": "A+"
+      },
+      {
+        "id": "flakiness-risk",
+        "score": 83,
+        "grade": "B"
+      },
+      {
+        "id": "isolation-risk",
+        "score": 100,
+        "grade": "A+"
+      },
+      {
+        "id": "naming-clarity",
+        "score": 82,
+        "grade": "B"
+      },
+      {
+        "id": "coverage-balance",
+        "score": 91,
+        "grade": "A-"
+      },
+      {
+        "id": "dead-test-risk",
+        "score": 100,
+        "grade": "A+"
+      }
+    ],
+    "ruleCounts": {
+      "coverage-happy-path-only": 19,
+      "naming-no-behavior-signal": 77,
+      "flaky-time-dependent": 37,
+      "isolation-global-mutation": 1,
+      "assertion-structure-only": 1
+    }
   }
 ]
