@@ -1,37 +1,65 @@
-name: Test Intelligence
+name: AssertIQ test intelligence
+
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
+
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: write         # commits history/dashboard assets on main
+  pull-requests: read
+  issues: write           # sticky PR comment
+  security-events: write  # SARIF / GitHub Code Scanning upload
 
 jobs:
   assertiq:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: mov2day/assertiq@v0.1.5
-        with:
-          fail-below: C
-          post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
-          track-history: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Update badge on main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npx @mov2day/assertiq --badge
-      - name: Commit badge
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+      - name: Analyze tests and enforce PR policy
+        uses: mov2day/assertiq@v0
+        with:
+          fail-below: C
+          fail-on-new: high
+          max-new-issues: 0
+
+          post-comment: >-
+            ${{ github.event_name == 'pull_request' &&
+                github.event.pull_request.head.repo.fork == false }}
+
+          sarif: true
+          sarif-output: assertiq-results.sarif
+          upload-sarif: true
+
+          track-history: >-
+            ${{ github.event_name == 'push' &&
+                github.ref == 'refs/heads/main' }}
+
+      - name: Generate repository reports
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          github.actor != 'github-actions[bot]'
+        run: |
+          npx @mov2day/assertiq@0 --html --badge --dashboard
+          npx @mov2day/assertiq@0 --json > assertiq-report.json
+
+      - name: Commit updated reports
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          github.actor != 'github-actions[bot]'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add assertiq-badge.svg assertiq-history.json
-          git diff --cached --quiet || git commit -m "chore(ci): update AssertIQ badge and history"
+          git add assertiq-history.json assertiq-badge.svg assertiq-report.html assertiq-dashboard.html assertiq-report.json
+          git diff --cached --quiet || git commit -m "chore(ci): update AssertIQ reports"
           git push
