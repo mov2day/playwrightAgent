@@ -36,5 +36,50 @@
         "grade": "A+"
       }
     ]
+  },
+  {
+    "sha": "230c5a152925a85264ceb42a3d1fccb535a68ea5",
+    "date": "2026-07-27T21:18:51.543Z",
+    "score": 92,
+    "grade": "A-",
+    "dimensions": [
+      {
+        "id": "assertion-quality",
+        "score": 99,
+        "grade": "A+"
+      },
+      {
+        "id": "flakiness-risk",
+        "score": 88,
+        "grade": "B+"
+      },
+      {
+        "id": "isolation-risk",
+        "score": 100,
+        "grade": "A+"
+      },
+      {
+        "id": "naming-clarity",
+        "score": 82,
+        "grade": "B"
+      },
+      {
+        "id": "coverage-balance",
+        "score": 88,
+        "grade": "B+"
+      },
+      {
+        "id": "dead-test-risk",
+        "score": 100,
+        "grade": "A+"
+      }
+    ],
+    "ruleCounts": {
+      "coverage-happy-path-only": 17,
+      "naming-no-behavior-signal": 57,
+      "coverage-single-test-file": 4,
+      "flaky-time-dependent": 19,
+      "assertion-structure-only": 1
+    }
   }
 ]
