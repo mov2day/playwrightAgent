@@ -2,6 +2,7 @@ import type { InvalidTicketSoftFailCommand, NoTicketPlanCommand, PlanParseResult
 
 const TICKET_PATTERN = /^[A-Z][A-Z0-9]+-[0-9]+$/;
 const TICKET_LIKE_PATTERN = /^[A-Za-z0-9]+-[A-Za-z0-9-]+$/;
+const QUICK_ACTION_TOKEN = /^(approve|reject|continue|cancel)$/i;
 
 function stripPlanCommand(rawInput: string): string {
   const trimmed = rawInput.trim();
@@ -63,6 +64,15 @@ function looksLikeTicketToken(token: string): boolean {
 }
 
 export function parseSlashPlanInput(rawInput: string): PlanParseResult {
+  const trimmedRaw = rawInput.trim();
+  if (!trimmedRaw.startsWith('/plan') && QUICK_ACTION_TOKEN.test(trimmedRaw)) {
+    return buildNoTicket(
+      '',
+      '',
+      ['Received gate action token without active request context; ignored as plan input.']
+    );
+  }
+
   const normalizedInput = stripPlanCommand(rawInput);
   if (normalizedInput.length === 0) {
     return buildNoTicket('', normalizedInput);

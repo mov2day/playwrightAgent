@@ -1,11 +1,34 @@
-import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { InMemoryEventSink } from '../../src/adapters/eventSink';
 import type { LocalToolCommandResult } from '../../src/adapters/localToolRunner';
 import {
   runPostWriteLintTypeGuardrail,
   type LintTypeGuardrailRunResult
 } from '../../src/pipeline/guardrails/lintTypeRunner';
 import { resolveLintTypeRetryEscalation } from '../../src/pipeline/guardrails/retryEscalation';
+import { PipelineOrchestrator } from '../../src/pipeline/orchestrator';
+import { handleGuardrailDecision } from '../../src/participant/handler';
+import { createPreviewApproveAllAction } from '../../src/ui/previewActions';
+
+const TEMP_DIRS: string[] = [];
+
+function makeTempWriteRoot(): string {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pwagent-guardrail-'));
+  TEMP_DIRS.push(rootDir);
+  return rootDir;
+}
+
+afterEach(() => {
+  for (const tempDir of TEMP_DIRS) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  TEMP_DIRS.length = 0;
+});
 
 function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): LocalToolCommandResult {
   return {
@@ -67,6 +90,31 @@ describe('lint/type escalation flow', () => {
     expect(executed).toEqual([
       { command: 'npm', args: ['run', 'lint'] },
       { command: 'npm', args: ['run', 'typecheck'] }
+    ]);
+  });
+
+  it('passes workspace cwd to lint/type command runner', async () => {
+    const executed: Array<{ command: string; args: string[]; cwd?: string }> = [];
+
+    const result = await runPostWriteLintTypeGuardrail({
+      cwd: '/workspace/project',
+      commandRunner: async (command, args, options) => {
+        executed.push({
+          command,
+          args,
+          cwd: options?.cwd
+        });
+        return makeCommandResult({
+          command,
+          args
+        });
+      }
+    });
+
+    expect(result.status).toBe('passed');
+    expect(executed).toEqual([
+      { command: 'npm', args: ['run', 'lint'], cwd: '/workspace/project' },
+      { command: 'npm', args: ['run', 'typecheck'], cwd: '/workspace/project' }
     ]);
   });
 
@@ -244,5 +292,147 @@ describe('lint/type escalation flow', () => {
     expect(outcome.escalation?.topErrors.length).toBeGreaterThan(0);
     expect(outcome.escalation?.attemptedFixSummary).toContain('Attempted quick fix');
     expect(outcome.escalation?.suggestedActions).toEqual(['approve', 'reject', 'continue', 'cancel']);
+  });
+
+  it('blocks pipeline in awaiting_guardrail_decision until explicit decision resolves guardrail_failed state', async () => {
+    const rootDir = makeTempWriteRoot();
+    const sink = new InMemoryEventSink();
+    const now = () => new Date('2026-05-31T04:00:00.000Z');
+    const requestId = 'req_guardrail_blocked_1';
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now,
+      rootDir,
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'guardrail-test'
+      })
+    });
+
+    orchestrator.startSession(requestId, 'ready_to_write');
+    expect(orchestrator.setPreviewVersion(requestId, 'preview.guardrail.v1')).toBe(true);
+    expect(orchestrator.applyPreviewAction(
+      requestId,
+      createPreviewApproveAllAction(requestId, 1, 'chat', 'preview.guardrail.v1')
+    ).ok).toBe(true);
+
+    const result = await orchestrator.executeWritePlanWithGuardrails(requestId, [
+      {
+        targetPath: 'tests/e2e/guardrail.generated.spec.ts',
+        mode: 'create_scoped',
+        scenarioIds: ['scn_guardrail_1'],
+        generatedBlock: 'test("guardrail generated", async () => {});'
+      }
+    ], {
+      commandRunner: async (command, args) => makeCommandResult({
+        ok: false,
+        command,
+        args,
+        exitCode: 1,
+        stderr: 'guardrail lint error',
+        error: 'lint/type failed'
+      }),
+      applyScopedAutoFix: async (targetFiles) => ({
+        ok: false,
+        summary: `No auto-fix for ${targetFiles.length} generated files.`
+      })
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe('GUARDRAIL_ESCALATION_REQUIRED');
+    expect(result.to).toBe('awaiting_guardrail_decision');
+    expect(orchestrator.getSession(requestId)?.state).toBe('awaiting_guardrail_decision');
+    expect(orchestrator.getPendingGuardrailEscalation(requestId)?.suggestedActions).toEqual([
+      'approve',
+      'reject',
+      'continue',
+      'cancel'
+    ]);
+
+    const continueResult = handleGuardrailDecision(requestId, 'continue', 'Fixed lint manually.', {
+      orchestrator
+    });
+
+    expect(continueResult.ok).toBe(true);
+    expect(continueResult.from).toBe('awaiting_guardrail_decision');
+    expect(continueResult.to).toBe('ready_to_write');
+    expect(orchestrator.getSession(requestId)?.state).toBe('ready_to_write');
+    expect(orchestrator.getSession(requestId)?.guardrailDecisionHistory.at(-1)).toMatchObject({
+      action: 'continue',
+      comment: 'Fixed lint manually.'
+    });
+  });
+
+  it('accepts only approve/reject/continue/cancel to resolve blocked guardrail escalation', async () => {
+    const rootDir = makeTempWriteRoot();
+    const sink = new InMemoryEventSink();
+    const now = () => new Date('2026-05-31T04:30:00.000Z');
+    const requestId = 'req_guardrail_blocked_2';
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now,
+      rootDir,
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'guardrail-test'
+      })
+    });
+
+    orchestrator.startSession(requestId, 'ready_to_write');
+    expect(orchestrator.setPreviewVersion(requestId, 'preview.guardrail.v2')).toBe(true);
+    expect(orchestrator.applyPreviewAction(
+      requestId,
+      createPreviewApproveAllAction(requestId, 1, 'chat', 'preview.guardrail.v2')
+    ).ok).toBe(true);
+
+    const blockedResult = await orchestrator.executeWritePlanWithGuardrails(requestId, [
+      {
+        targetPath: 'tests/e2e/guardrail.generated.spec.ts',
+        mode: 'create_scoped',
+        scenarioIds: ['scn_guardrail_2'],
+        generatedBlock: 'test("guardrail generated 2", async () => {});'
+      }
+    ], {
+      commandRunner: async (command, args) => makeCommandResult({
+        ok: false,
+        command,
+        args,
+        exitCode: 1,
+        stderr: 'typecheck failure',
+        error: 'typecheck failed'
+      }),
+      applyScopedAutoFix: async () => ({
+        ok: false,
+        summary: 'Retry attempted once and failed.'
+      })
+    });
+
+    expect(blockedResult.ok).toBe(false);
+    expect(orchestrator.getSession(requestId)?.state).toBe('awaiting_guardrail_decision');
+
+    const invalid = orchestrator.applyGuardrailDecision(
+      requestId,
+      'retry' as unknown as Parameters<typeof orchestrator.applyGuardrailDecision>[1],
+      'retry not allowed'
+    );
+    expect(invalid.ok).toBe(false);
+    expect(invalid.errorCode).toBe('UNMAPPED_ACTION');
+    expect(orchestrator.getSession(requestId)?.state).toBe('awaiting_guardrail_decision');
+
+    const rejectResult = handleGuardrailDecision(requestId, 'reject', 'Rejecting failing guardrail run.', {
+      orchestrator
+    });
+
+    expect(rejectResult.ok).toBe(true);
+    expect(rejectResult.to).toBe('cancelled');
+    expect(orchestrator.getSession(requestId)?.state).toBe('cancelled');
   });
 });

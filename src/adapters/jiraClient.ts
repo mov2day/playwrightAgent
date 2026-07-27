@@ -1,4 +1,8 @@
-import { redactSensitiveText, runLocalToolCommand, type LocalToolCommandResult } from './localToolRunner';
+import {
+  redactSensitiveText,
+  runLocalToolCommand,
+  type LocalToolRunner
+} from './localToolRunner';
 
 export interface JiraTicketDetails {
   key: string;
@@ -71,7 +75,8 @@ export interface LocalToolJiraClientOptions {
   command?: string;
   baseArgs?: string[];
   timeoutMs?: number;
-  runner?: (command: string, args: string[], timeoutMs?: number) => Promise<LocalToolCommandResult>;
+  cwd?: string;
+  runner?: LocalToolRunner;
 }
 
 function toSafeError(message: string): string {
@@ -125,12 +130,15 @@ export class LocalToolJiraClient implements JiraClient {
 
   private readonly timeoutMs: number;
 
-  private readonly runner: (command: string, args: string[], timeoutMs?: number) => Promise<LocalToolCommandResult>;
+  private readonly cwd?: string;
+
+  private readonly runner: LocalToolRunner;
 
   constructor(options: LocalToolJiraClientOptions = {}) {
     this.command = options.command ?? 'node';
     this.baseArgs = options.baseArgs ?? ['scripts/jira-fetch.mjs'];
     this.timeoutMs = options.timeoutMs ?? 20_000;
+    this.cwd = options.cwd;
     this.runner = options.runner ?? runLocalToolCommand;
   }
 
@@ -138,7 +146,10 @@ export class LocalToolJiraClient implements JiraClient {
     const result = await this.runner(
       this.command,
       [...this.baseArgs, '--ticket', input.ticketId, '--request-id', input.requestId],
-      input.timeoutMs ?? this.timeoutMs
+      {
+        timeoutMs: input.timeoutMs ?? this.timeoutMs,
+        cwd: this.cwd
+      }
     );
 
     if (!result.ok) {

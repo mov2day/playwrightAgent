@@ -115,7 +115,10 @@ describe('skills stage-entry gate', () => {
 
     expect(response.state).toBe('initialized');
     expect(response.stageEntryDecision?.stage).toBe('planning');
-    expect(response.availableActions).toEqual(['approve', 'reject', 'continue', 'cancel']);
+    expect(response.message).toContain('internal skill integrity gate');
+    expect(response.availableActions).toEqual(['cancel']);
+    expect(response.planSummary).toBeUndefined();
+    expect(response.planScenarios).toBeUndefined();
     const blockedEvents = sink.getEvents().filter((event) => event.action === 'stage_entry_blocked');
     expect(blockedEvents.length).toBeGreaterThan(0);
   });

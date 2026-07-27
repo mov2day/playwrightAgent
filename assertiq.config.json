@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "naming-no-behavior-signal": "warn",
+    "coverage-single-test-file": "off"
+  },
+  "ignoreRules": [],
+  "suppressions": [
+    {
+      "fingerprint": "rule|dimension|file|testName|message|evidence",
+      "reason": "Intentional exception with documented coverage elsewhere."
+    }
+  ]
+}

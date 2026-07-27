@@ -3,6 +3,11 @@ import { spawn } from 'node:child_process';
 const DEFAULT_TIMEOUT_MS = 20_000;
 const OUTPUT_LIMIT = 200_000;
 
+export interface LocalToolRunOptions {
+  timeoutMs?: number;
+  cwd?: string;
+}
+
 interface SensitiveRedactionRule {
   id: string;
   pattern: RegExp;
@@ -37,6 +42,12 @@ export interface LocalToolCommandResult {
   timedOut: boolean;
   error?: string;
 }
+
+export type LocalToolRunner = (
+  command: string,
+  args: string[],
+  options?: LocalToolRunOptions
+) => Promise<LocalToolCommandResult>;
 
 function clampOutput(value: string): string {
   if (value.length <= OUTPUT_LIMIT) {
@@ -85,8 +96,12 @@ export function redactSensitiveValue(value: unknown): unknown {
 export async function runLocalToolCommand(
   command: string,
   args: string[],
-  timeoutMs = DEFAULT_TIMEOUT_MS
+  options: number | LocalToolRunOptions = DEFAULT_TIMEOUT_MS
 ): Promise<LocalToolCommandResult> {
+  const normalizedOptions = typeof options === 'number'
+    ? { timeoutMs: options }
+    : options;
+  const timeoutMs = normalizedOptions.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -97,7 +112,8 @@ export async function runLocalToolCommand(
 
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      signal: controller.signal
+      signal: controller.signal,
+      cwd: normalizedOptions.cwd
     });
 
     child.stdout.on('data', (chunk: Buffer | string) => {

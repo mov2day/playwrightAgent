@@ -1,7 +1,8 @@
 import {
   redactSensitiveText,
   runLocalToolCommand,
-  type LocalToolCommandResult
+  type LocalToolCommandResult,
+  type LocalToolRunner
 } from '../../adapters/localToolRunner';
 
 const OUTPUT_CLAMP_LIMIT = 20_000;
@@ -35,11 +36,9 @@ export interface LintTypeGuardrailRunResult {
 }
 
 export interface LintTypeRunnerDeps {
-  commandRunner?: (
-    command: string,
-    args: string[]
-  ) => Promise<LocalToolCommandResult>;
+  commandRunner?: LocalToolRunner;
   now?: () => Date;
+  cwd?: string;
 }
 
 function clampOutput(value: string): string {
@@ -78,7 +77,9 @@ export async function runPostWriteLintTypeGuardrail(
 
   for (const spec of DEFAULT_GUARDRAIL_COMMANDS) {
     const startedAt = now();
-    const commandResult = await commandRunner(spec.command, spec.args);
+    const commandResult = await commandRunner(spec.command, spec.args, {
+      cwd: deps.cwd
+    });
     const completedAt = now();
     const sanitizedResult = sanitizeCommandResult(commandResult, spec.command, spec.args);
 

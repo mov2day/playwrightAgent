@@ -24,6 +24,7 @@ const TEXT_FILE_EXTENSIONS = new Set([
   '.mjs'
 ]);
 const IGNORED_DIRECTORIES = new Set(['.git', 'node_modules', 'dist', 'coverage', '.planning']);
+const REPO_ANALYSIS_CACHE = new Map<string, RepoAnalysisResult>();
 
 function toPosix(relativePath: string): string {
   return relativePath.split(path.sep).join('/');
@@ -154,10 +155,37 @@ export interface AnalyzeRepositoryContextInput {
   semanticPatternHint?: RepoPattern;
   unknownThreshold?: number;
   maxFiles?: number;
+  refresh?: boolean;
+}
+
+function buildCacheKey(input: AnalyzeRepositoryContextInput, rootDir: string): string {
+  return JSON.stringify({
+    rootDir,
+    semanticPatternHint: input.semanticPatternHint ?? 'none',
+    unknownThreshold: input.unknownThreshold ?? 0.5,
+    maxFiles: input.maxFiles ?? DEFAULT_MAX_FILES
+  });
+}
+
+function cloneRepoAnalysisResult(result: RepoAnalysisResult): RepoAnalysisResult {
+  return JSON.parse(JSON.stringify(result)) as RepoAnalysisResult;
+}
+
+export function __clearRepoAnalysisCacheForTests(): void {
+  REPO_ANALYSIS_CACHE.clear();
 }
 
 export function analyzeRepositoryContext(input: AnalyzeRepositoryContextInput = {}): RepoAnalysisResult {
   const rootDir = input.rootDir ?? process.cwd();
+  const cacheKey = buildCacheKey(input, rootDir);
+
+  if (!input.snapshot && !input.refresh) {
+    const cached = REPO_ANALYSIS_CACHE.get(cacheKey);
+    if (cached) {
+      return cloneRepoAnalysisResult(cached);
+    }
+  }
+
   const snapshot = input.snapshot ?? buildRepoScanSnapshot(rootDir, input.maxFiles ?? DEFAULT_MAX_FILES);
   const unknownThreshold = input.unknownThreshold ?? 0.5;
 
@@ -195,8 +223,14 @@ export function analyzeRepositoryContext(input: AnalyzeRepositoryContextInput = 
     ]
   });
 
-  return {
+  const result = {
     findings: unknownFallback.findings,
     summary
   };
+
+  if (!input.snapshot) {
+    REPO_ANALYSIS_CACHE.set(cacheKey, cloneRepoAnalysisResult(result));
+  }
+
+  return result;
 }

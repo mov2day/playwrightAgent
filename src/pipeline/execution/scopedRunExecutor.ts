@@ -1,7 +1,8 @@
 import {
   redactSensitiveText,
   runLocalToolCommand,
-  type LocalToolCommandResult
+  type LocalToolCommandResult,
+  type LocalToolRunner
 } from '../../adapters/localToolRunner';
 import { createPipelineEvent, type PipelineStageEvent } from '../events';
 import type {
@@ -11,15 +12,13 @@ import type {
 
 const OUTPUT_CLAMP_LIMIT = 20_000;
 
-type LocalCommandRunner = (
-  command: string,
-  args: string[]
-) => Promise<LocalToolCommandResult>;
+type LocalCommandRunner = LocalToolRunner;
 
 export interface ScopedRunExecutorDeps {
   commandRunner?: LocalCommandRunner;
   emitEvent?: (event: PipelineStageEvent) => void;
   now?: () => Date;
+  cwd?: string;
 }
 
 export interface ScopedRunExecutionResult {
@@ -149,7 +148,9 @@ export async function executeScopedRun(
     }
   }, now));
 
-  const rawResult = await commandRunner(commandPreview.command, commandPreview.args);
+  const rawResult = await commandRunner(commandPreview.command, commandPreview.args, {
+    cwd: deps.cwd
+  });
   const completedAt = now();
   const result = sanitizeCommandResult(rawResult, commandPreview.command, commandPreview.args);
 

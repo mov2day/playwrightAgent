@@ -138,6 +138,7 @@ export interface ReviewSnapshot {
   excludedCount: number;
   regenerationScenarioIds: string[];
   impactedRequirementIds: string[];
+  globalComments: ReviewCommentRecord[];
   records: Record<string, ScenarioReviewRecord>;
 }
 
@@ -145,6 +146,7 @@ export interface OrchestratorDeps {
   eventSink: EventSink;
   now?: () => Date;
   rootDir?: string;
+  skillManifestRootDir?: string;
   stageEntryGateEvaluator?: StageEntryGateEvaluator;
 }
 
@@ -611,15 +613,18 @@ export class PipelineOrchestrator {
 
   private readonly rootDir: string;
 
+  private readonly skillManifestRootDir: string;
+
   private readonly stageEntryGateEvaluator: StageEntryGateEvaluator;
 
   constructor(deps: OrchestratorDeps) {
     this.eventSink = deps.eventSink;
     this.now = deps.now ?? (() => new Date());
     this.rootDir = deps.rootDir ?? process.cwd();
+    this.skillManifestRootDir = deps.skillManifestRootDir ?? this.rootDir;
     this.stageEntryGateEvaluator = deps.stageEntryGateEvaluator ?? ((stage) => {
       try {
-        const manifest = buildSkillManifest({ rootDir: this.rootDir });
+        const manifest = buildSkillManifest({ rootDir: this.skillManifestRootDir });
         return evaluateSkillQualityGate(manifest, stage);
       } catch (error) {
         const message = error instanceof Error
@@ -951,9 +956,7 @@ export class PipelineOrchestrator {
         targetState = 'script_rejected';
       }
     } else if (action === 'continue') {
-      if (session.state === 'awaiting_plan_approval' && session.decisionGate === 'approval_required') {
-        targetState = 'plan_approved';
-      } else if (session.state === 'plan_approved') {
+      if (session.state === 'plan_approved') {
         targetState = 'awaiting_script_approval';
       } else if (session.state === 'script_approved') {
         if (!hasCurrentPreviewApproval(session)) {
@@ -1880,6 +1883,7 @@ export class PipelineOrchestrator {
       excludedCount: scope.excludedCount,
       regenerationScenarioIds: regeneration.regenerationScenarioIds,
       impactedRequirementIds: regeneration.impactedRequirementIds,
+      globalComments: session.globalComments.map((comment) => ({ ...comment })),
       records: Object.fromEntries(records.map((record) => [record.scenarioId, cloneScenarioRecord(record)]))
     };
   }

@@ -59,6 +59,7 @@ export interface BuildReviewViewModelInput {
   bundle: PlanReviewBundle;
   availableActions: readonly QuickAction[];
   activeTabId?: ReviewTabId;
+  globalComments?: ReviewCommentEntry[];
 }
 
 export function sanitizeReviewText(value: string): string {
@@ -87,9 +88,9 @@ function toReviewScenario(record: ScenarioPlanRecord): ReviewScenarioView {
     comments: record.commentRefs.map((commentRef) => ({
       commentId: commentRef.commentId,
       target: commentRef.target,
-      classification: 'clarification',
-      text: '',
-      createdAt: ''
+      classification: commentRef.classification ?? 'clarification',
+      text: sanitizeReviewText(commentRef.text ?? ''),
+      createdAt: commentRef.createdAt ?? ''
     }))
   };
 }
@@ -103,6 +104,13 @@ function toGroupViews(source: Record<string, string[]>): ReviewGroupView[] {
       scenarioIds,
       count: scenarioIds.length
     }));
+}
+
+function toReviewCommentEntry(comment: ReviewCommentEntry): ReviewCommentEntry {
+  return {
+    ...comment,
+    text: sanitizeReviewText(comment.text)
+  };
 }
 
 function buildTabs(bundle: PlanReviewBundle): ReviewTabView[] {
@@ -168,7 +176,7 @@ export function buildReviewViewModel(input: BuildReviewViewModelInput): ReviewVi
     activeTabId: input.activeTabId ?? 'all',
     scenariosById,
     orderedScenarioIds,
-    globalComments: [],
+    globalComments: input.globalComments ? input.globalComments.map(toReviewCommentEntry) : [],
     availableActions: input.availableActions
   };
 }

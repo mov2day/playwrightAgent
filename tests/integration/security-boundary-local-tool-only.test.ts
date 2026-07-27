@@ -148,6 +148,67 @@ describe('security boundary local-tool only', () => {
     ).rejects.not.toThrow(confluenceSecret);
   });
 
+  it('propagates workspace cwd to Jira and Confluence local tooling', async () => {
+    const jiraRunner = vi.fn(async () => okResult(JSON.stringify({
+      ticket: {
+        key: 'QA-613',
+        type: 'task',
+        summary: 'Workspace cwd propagation'
+      },
+      comments: [],
+      attachments: [],
+      linkedIssues: [],
+      linkedPages: [],
+      subtasks: [],
+      completeness: { status: 'full', reasons: [] }
+    })));
+    const confluenceRunner = vi.fn(async () => okResult('[]'));
+
+    const jiraClient = new LocalToolJiraClient({
+      cwd: '/workspace/project',
+      runner: jiraRunner
+    });
+    const confluenceClient = new LocalToolConfluenceClient({
+      cwd: '/workspace/project',
+      runner: confluenceRunner
+    });
+
+    await jiraClient.fetchTicketGraph({
+      ticketId: 'QA-613',
+      requestId: 'req_boundary_3'
+    });
+    await confluenceClient.searchPages({
+      requestId: 'req_boundary_3',
+      queries: [{
+        queryText: 'QA-613 workspace cwd',
+        sourceEntity: 'jira:QA-613',
+        priority: 5,
+        maxResults: 2
+      }]
+    });
+
+    expect(jiraRunner).toHaveBeenCalledWith(
+      'node',
+      ['scripts/jira-fetch.mjs', '--ticket', 'QA-613', '--request-id', 'req_boundary_3'],
+      expect.objectContaining({
+        cwd: '/workspace/project'
+      })
+    );
+    expect(confluenceRunner).toHaveBeenCalledWith(
+      'node',
+      [
+        'scripts/confluence-search.mjs',
+        '--request-id',
+        'req_boundary_3',
+        '--queries-json',
+        '[{"queryText":"QA-613 workspace cwd","sourceEntity":"jira:QA-613","priority":5,"maxResults":2}]'
+      ],
+      expect.objectContaining({
+        cwd: '/workspace/project'
+      })
+    );
+  });
+
   it('does not serialize raw secret values in participant/orchestrator event details', () => {
     const canary = 'LEAK_CANARY_EVENT_DETAILS_789';
     const sink = new InMemoryEventSink();

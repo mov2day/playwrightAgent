@@ -80,13 +80,13 @@ describe('request correlation across orchestrator events', () => {
     });
 
     const first = orchestrator.handleQuickAction(response.requestId, 'continue');
-    expect(first.ok).toBe(true);
+    expect(first.ok).toBe(false);
+    expect(first.errorCode).toBe('UNMAPPED_ACTION');
 
     const result = orchestrator.handleQuickAction(response.requestId, 'approve');
     const session = orchestrator.getSession(response.requestId);
 
-    expect(result.ok).toBe(false);
-    expect(result.errorCode).toBe('UNMAPPED_ACTION');
+    expect(result.ok).toBe(true);
     expect(session?.state).toBe('plan_approved');
   });
 

@@ -6,6 +6,8 @@ describe('pipeline state machine', () => {
   it('allows legal transitions', () => {
     expect(canTransition('initialized', 'awaiting_plan_approval')).toBe(true);
     expect(canTransition('awaiting_plan_approval', 'awaiting_revision')).toBe(true);
+    expect(canTransition('ready_to_write', 'awaiting_guardrail_decision')).toBe(true);
+    expect(canTransition('awaiting_guardrail_decision', 'ready_to_write')).toBe(true);
     expect(transitionState('awaiting_plan_approval', 'plan_approved')).toMatchObject({
       ok: true,
       from: 'awaiting_plan_approval',

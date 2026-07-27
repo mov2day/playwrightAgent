@@ -135,6 +135,36 @@ describe('execution run flow', () => {
     ]);
   });
 
+  it('passes workspace cwd into scoped execution runner', async () => {
+    const runnerCalls: Array<{ command: string; args: string[]; cwd?: string }> = [];
+
+    await executeScopedRun(createScopedRunRequest({
+      requestId: 'req_execution_cwd',
+      generatedOrUpdatedTargets: ['tests/e2e/auth.spec.ts']
+    }), {
+      cwd: '/workspace/project',
+      commandRunner: async (command, args, options) => {
+        runnerCalls.push({
+          command,
+          args,
+          cwd: options?.cwd
+        });
+        return makeCommandResult({ command, args });
+      }
+    });
+
+    expect(runnerCalls).toEqual([{
+      command: 'npx',
+      args: [
+        'playwright',
+        'test',
+        'tests/e2e/auth.spec.ts',
+        '--reporter=json'
+      ],
+      cwd: '/workspace/project'
+    }]);
+  });
+
   it('fails closed when generated/updated scope has no targets', async () => {
     const result = await executeScopedRun(createScopedRunRequest({
       requestId: 'req_execution_4',

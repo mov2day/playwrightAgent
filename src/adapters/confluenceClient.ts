@@ -1,4 +1,8 @@
-import { redactSensitiveText, runLocalToolCommand, type LocalToolCommandResult } from './localToolRunner';
+import {
+  redactSensitiveText,
+  runLocalToolCommand,
+  type LocalToolRunner
+} from './localToolRunner';
 
 export interface ConfluenceQuery {
   queryText: string;
@@ -30,7 +34,8 @@ export interface LocalToolConfluenceClientOptions {
   command?: string;
   baseArgs?: string[];
   timeoutMs?: number;
-  runner?: (command: string, args: string[], timeoutMs?: number) => Promise<LocalToolCommandResult>;
+  cwd?: string;
+  runner?: LocalToolRunner;
 }
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -67,12 +72,15 @@ export class LocalToolConfluenceClient implements ConfluenceClient {
 
   private readonly timeoutMs: number;
 
-  private readonly runner: (command: string, args: string[], timeoutMs?: number) => Promise<LocalToolCommandResult>;
+  private readonly cwd?: string;
+
+  private readonly runner: LocalToolRunner;
 
   constructor(options: LocalToolConfluenceClientOptions = {}) {
     this.command = options.command ?? 'node';
     this.baseArgs = options.baseArgs ?? DEFAULT_BASE_ARGS;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.cwd = options.cwd;
     this.runner = options.runner ?? runLocalToolCommand;
   }
 
@@ -80,7 +88,10 @@ export class LocalToolConfluenceClient implements ConfluenceClient {
     const result = await this.runner(
       this.command,
       [...this.baseArgs, '--request-id', input.requestId, '--queries-json', JSON.stringify(input.queries)],
-      input.timeoutMs ?? this.timeoutMs
+      {
+        timeoutMs: input.timeoutMs ?? this.timeoutMs,
+        cwd: this.cwd
+      }
     );
 
     if (!result.ok) {

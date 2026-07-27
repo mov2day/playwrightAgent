@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PlaywrightAgent</title>
+    <meta
+      name="description"
+      content="PlaywrightAgent brings approval-gated, enterprise-grade Playwright test generation into VS Code without exposing Jira or Confluence credentials to AI prompts."
+    />
+    <style>
+      @import url('https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800|ibm-plex-mono:400,500');
+
+      :root {
+        color-scheme: light dark;
+        --bg: #f2f4f7;
+        --bg-elevated: rgba(255, 255, 255, 0.9);
+        --bg-strong: #fafbfd;
+        --surface: rgba(255, 255, 255, 0.84);
+        --surface-strong: #ffffff;
+        --surface-muted: rgba(243, 246, 251, 0.96);
+        --text: #101828;
+        --text-soft: #475467;
+        --text-faint: #667085;
+        --line: rgba(16, 24, 40, 0.08);
+        --line-strong: rgba(21, 94, 239, 0.18);
+        --accent: #155eef;
+        --accent-soft: rgba(21, 94, 239, 0.1);
+        --accent-strong: #004eea;
+        --glow: rgba(21, 94, 239, 0.06);
+        --shadow: 0 24px 60px rgba(16, 24, 40, 0.08);
+        --shadow-soft: 0 10px 28px rgba(16, 24, 40, 0.06);
+        --radius-shell: 24px;
+        --radius-core: 18px;
+        --radius-pill: 999px;
+        --max: 1200px;
+        --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+        --ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --bg-elevated: rgba(11, 18, 32, 0.92);
+          --bg-strong: #111827;
+          --surface: rgba(17, 24, 39, 0.86);
+          --surface-strong: #101828;
+          --surface-muted: rgba(17, 24, 39, 0.95);
+          --text: #f8fafc;
+          --text-soft: #cbd5e1;
+          --text-faint: #94a3b8;
+          --line: rgba(248, 250, 252, 0.08);
+          --line-strong: rgba(96, 165, 250, 0.22);
+          --accent: #60a5fa;
+          --accent-soft: rgba(96, 165, 250, 0.12);
+          --accent-strong: #3b82f6;
+          --glow: rgba(96, 165, 250, 0.08);
+          --shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+          --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.2);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, var(--glow), transparent 26%),
+          linear-gradient(180deg, var(--bg-strong), var(--bg));
+        overflow-x: hidden;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 96px 96px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 82%);
+        opacity: 0.14;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+      }
+
+      .shell {
+        width: min(calc(100% - 2rem), var(--max));
+        margin: 0 auto;
+      }
+
+      .floating-nav {
+        position: sticky;
+        top: 1.25rem;
+        z-index: 10;
+        padding-top: 1.25rem;
+      }
+
+      .frame {
+        padding: 0.42rem;
+        border-radius: var(--radius-shell);
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+        box-shadow: var(--shadow-soft);
+      }
+
+      .pane {
+        border-radius: var(--radius-core);
+        border: 1px solid var(--line);
+        background: var(--bg-elevated);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      }
+
+      .nav-core {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0.9rem 0.75rem 1rem;
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 0.95rem;
+        display: grid;
+        place-items: center;
+        color: var(--text);
+        background: var(--surface-muted);
+        border: 1px solid var(--line);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+
+      .brand-copy strong,
+      .hero-copy h1,
+      .section-title,
+      .visual-title,
+      .feature-card h3,
+      .flow-step h3,
+      .rail-card h3,
+      .link-block strong {
+        letter-spacing: -0.04em;
+      }
+
+      .brand-copy strong {
+        display: block;
+        font-size: 0.98rem;
+      }
+
+      .brand-copy span {
+        display: block;
+        margin-top: 0.12rem;
+        font-size: 0.8rem;
+        color: var(--text-faint);
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .nav-links a {
+        padding: 0.72rem 0.92rem;
+        border-radius: 14px;
+        font-size: 0.9rem;
+        color: var(--text-soft);
+        transition:
+          transform 180ms var(--ease-out),
+          background-color 180ms var(--ease-out),
+          color 180ms var(--ease-out);
+      }
+
+      .nav-links a:focus-visible {
+        color: var(--text);
+        background: var(--accent-soft);
+        transform: translateY(-1px);
+        outline: none;
+      }
+
+      main {
+        padding-bottom: 4rem;
+      }
+
+      section {
+        padding: 5.75rem 0;
+      }
+
+      .hero {
+        padding-top: 4rem;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 2rem;
+        align-items: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.42rem 0.74rem;
+        border-radius: 12px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        color: var(--text-soft);
+        font-size: 0.72rem;
+        font-family: 'IBM Plex Mono', monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: '';
+        width: 0.7rem;
+        height: 1px;
+        border-radius: 0;
+        background: currentColor;
+        box-shadow: none;
+      }
+
+      .hero-copy h1 {
+        margin: 1.2rem 0 1rem;
+        max-width: 12ch;
+        font-size: clamp(3.1rem, 6vw, 5.2rem);
+        line-height: 0.98;
+      }
+
+      .hero-copy p {
+        margin: 0;
+        max-width: 33rem;
+        font-size: 1.02rem;
+        line-height: 1.72;
+        color: var(--text-soft);
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.9rem;
+        margin-top: 2rem;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 0.36rem 0.38rem 0.36rem 1.05rem;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        transition:
+          transform 180ms var(--ease-out),
+          box-shadow 180ms var(--ease-out),
+          border-color 180ms var(--ease-out),
+          background-color 180ms var(--ease-out);
+      }
+
+      .button:active {
+        transform: scale(0.98);
+      }
+
+      .button.primary {
+        color: #f7fbff;
+        background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+        box-shadow: 0 12px 28px rgba(21, 94, 239, 0.18);
+      }
+
+      .button.secondary {
+        color: var(--text);
+        background: var(--surface);
+        border-color: var(--line);
+      }
+
+      .button:focus-visible {
+        transform: translateY(-2px);
+        outline: none;
+      }
+
+      .button.secondary:focus-visible {
+        border-color: var(--line-strong);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .button .orb {
+        width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 0.96rem;
+        background: rgba(255, 255, 255, 0.12);
+        transition:
+          transform 180ms var(--ease-out),
+          background-color 180ms var(--ease-out);
+      }
+
+      .button.secondary .orb {
+        background: var(--accent-soft);
+      }
+
+      .button:focus-visible .orb {
+        transform: translate(3px, -1px) scale(1.04);
+      }
+
+      .hero-visual {
+        position: relative;
+      }
+
+      .visual-shell {
+        padding: 0.5rem;
+        border-radius: 1.8rem;
+        background:
+          linear-gradient(155deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+          var(--surface);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+      }
+
+      .visual-core {
+        overflow: hidden;
+        position: relative;
+        padding: 1.4rem;
+        border-radius: 1.35rem;
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(circle at top right, var(--accent-soft), transparent 34%),
+          linear-gradient(180deg, var(--surface-strong), var(--surface-muted));
+      }
+
+      .visual-core::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 40px 40px;
+        opacity: 0.12;
+        pointer-events: none;
+      }
+
+      .visual-header,
+      .visual-panel,
+      .code-panel {
+        position: relative;
+        z-index: 1;
+      }
+
+      .visual-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .visual-title strong {
+        display: block;
+        font-size: 1.15rem;
+      }
+
+      .visual-title span,
+      .chip-row span,
+      .code-panel small,
+      .stat-line span:last-child,
+      .rail-card p,
+      .feature-card p,
+      .flow-step p,
+      .footer-note,
+      .subline,
+      .link-block p {
+        color: var(--text-soft);
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.46rem 0.72rem;
+        border-radius: 12px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        font-size: 0.8rem;
+        font-family: 'IBM Plex Mono', monospace;
+      }
+
+      .status-pill::before {
+        content: '';
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      .visual-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 1rem;
+      }
+
+      .visual-panel,
+      .code-panel {
+        padding: 1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid var(--line);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .visual-panel,
+        .code-panel {
+          background: rgba(8, 19, 36, 0.72);
+        }
+      }
+
+      .subline {
+        margin: 0 0 0.95rem;
+        font-size: 0.92rem;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+      }
+
+      .chip-row span {
+        padding: 0.54rem 0.72rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.58);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .chip-row span {
+          background: rgba(255, 255, 255, 0.03);
+        }
+      }
+
+      .stat-stack {
+        display: grid;
+        gap: 0.72rem;
+      }
+
+      .stat-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.72rem 0.82rem;
+        border-radius: 0.9rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        font-size: 0.88rem;
+      }
+
+      .code-panel {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .code-panel small {
+        font-family: 'IBM Plex Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      pre {
+        margin: 0;
+        padding: 1rem;
+        overflow: auto;
+        border-radius: 0.95rem;
+        border: 1px solid var(--line);
+        background: #0f172a;
+        color: #dbeafe;
+        font-size: 0.84rem;
+        line-height: 1.7;
+        font-family: 'IBM Plex Mono', monospace;
+      }
+
+      .logo-rail {
+        padding-top: 2rem;
+      }
+
+      .logo-shell {
+        padding: 1.1rem;
+      }
+
+      .logo-core {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .logo-core img {
+        width: 1.6rem;
+        height: 1.6rem;
+        opacity: 0.82;
+      }
+
+      .logo-core a {
+        min-height: 4.5rem;
+        border-radius: 0.95rem;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        display: grid;
+        place-items: center;
+        transition:
+          transform 180ms var(--ease-out),
+          border-color 180ms var(--ease-out),
+          background-color 180ms var(--ease-out);
+      }
+
+      .logo-core a:focus-visible {
+        transform: translateY(-3px);
+        border-color: var(--line-strong);
+        outline: none;
+        background: var(--accent-soft);
+      }
+
+      .section-title {
+        margin: 0 0 0.9rem;
+        font-size: clamp(2.1rem, 4vw, 3.2rem);
+        line-height: 1.02;
+        max-width: 10ch;
+      }
+
+      .section-copy {
+        max-width: 38rem;
+        margin: 0 0 2rem;
+        color: var(--text-soft);
+        line-height: 1.8;
+      }
+
+      .bento {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 1.25rem;
+      }
+
+      .feature-card {
+        min-height: 17rem;
+        padding: 1.3rem;
+      }
+
+      .feature-card .pane {
+        height: 100%;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .feature-card.large {
+        grid-column: span 7;
+      }
+
+      .feature-card.medium {
+        grid-column: span 5;
+      }
+
+      .feature-card.wide {
+        grid-column: span 8;
+      }
+
+      .feature-card.tall {
+        grid-column: span 4;
+      }
+
+      .feature-card h3,
+      .flow-step h3,
+      .rail-card h3,
+      .link-block strong {
+        margin: 0;
+        font-size: 1.3rem;
+      }
+
+      .feature-card p,
+      .flow-step p,
+      .rail-card p,
+      .link-block p {
+        margin: 0;
+        line-height: 1.72;
+      }
+
+      .card-kicker,
+      .flow-step strong,
+      .rail-card strong,
+      .link-block span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: var(--accent);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .card-kicker::before,
+      .flow-step strong::before,
+      .rail-card strong::before,
+      .link-block span::before {
+        content: '';
+        width: 0.42rem;
+        height: 0.42rem;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
+      .gradient-card .pane {
+        background:
+          linear-gradient(180deg, var(--surface-strong), var(--surface-muted));
+        color: var(--text);
+        border-color: var(--line);
+      }
+
+      .gradient-card .card-kicker,
+      .gradient-card p,
+      .gradient-card .mini-grid span {
+        color: var(--text-soft);
+      }
+
+      .mini-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .mini-grid span {
+        padding: 0.85rem;
+        border-radius: 0.85rem;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        font-size: 0.88rem;
+      }
+
+      .signal-list {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .signal-list div {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.82rem 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.92rem;
+      }
+
+      .signal-list div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .flow-wrap {
+        display: grid;
+        gap: 1.2rem;
+      }
+
+      .flow-bar {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .flow-step {
+        padding: 1.15rem;
+      }
+
+      .flow-step .pane {
+        height: 100%;
+        padding: 1.35rem;
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .flow-step p {
+        font-size: 0.94rem;
+      }
+
+      .flow-step .line {
+        height: 0.24rem;
+        width: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent), transparent);
+      }
+
+      .governance-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1.25rem;
+      }
+
+      .rail-card {
+        padding: 1.2rem;
+      }
+
+      .rail-card .pane {
+        height: 100%;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+      }
+
+      .rail-list {
+        display: grid;
+        gap: 0.78rem;
+      }
+
+      .rail-list div {
+        padding: 0.95rem 1rem;
+        border-radius: 0.9rem;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .link-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem;
+      }
+
+      .link-block {
+        padding: 1.1rem;
+        transition:
+          transform 180ms var(--ease-out),
+          border-color 180ms var(--ease-out);
+      }
+
+      .link-block .pane {
+        height: 100%;
+        padding: 1.35rem;
+        display: grid;
+        gap: 0.85rem;
+        align-content: start;
+      }
+
+      .link-block:focus-within {
+        transform: translateY(-3px);
+      }
+
+      .link-block:focus-within .pane {
+        border-color: var(--line-strong);
+      }
+
+      footer {
+        padding: 0 0 3rem;
+      }
+
+      .footer-shell {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.4rem 1.6rem;
+      }
+
+      .footer-shell strong {
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+      }
+
+      .footer-links a {
+        padding: 0.72rem 1rem;
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        font-size: 0.9rem;
+        transition:
+          transform 180ms var(--ease-out),
+          border-color 180ms var(--ease-out);
+      }
+
+      .footer-links a:focus-visible {
+        transform: translateY(-2px);
+        border-color: var(--line-strong);
+        outline: none;
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .nav-links a:hover {
+          color: var(--text);
+          background: var(--accent-soft);
+          transform: translateY(-1px);
+        }
+
+        .button:hover {
+          transform: translateY(-2px);
+        }
+
+        .button.secondary:hover {
+          border-color: var(--line-strong);
+          box-shadow: var(--shadow-soft);
+        }
+
+        .button:hover .orb {
+          transform: translate(3px, -1px) scale(1.04);
+        }
+
+        .logo-core a:hover {
+          transform: translateY(-3px);
+          border-color: var(--line-strong);
+          background: var(--accent-soft);
+        }
+
+        .link-block:hover {
+          transform: translateY(-3px);
+        }
+
+        .link-block:hover .pane {
+          border-color: var(--line-strong);
+        }
+
+        .footer-links a:hover {
+          transform: translateY(-2px);
+          border-color: var(--line-strong);
+        }
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 620ms var(--ease-out),
+          transform 620ms var(--ease-out);
+      }
+
+      .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition-duration: 0.01ms !important;
+          transition-delay: 0ms !important;
+        }
+
+        .reveal {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @media (max-width: 980px) {
+        .hero-grid,
+        .governance-grid,
+        .visual-grid,
+        .flow-bar,
+        .link-grid,
+        .logo-core {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-copy h1,
+        .section-title {
+          max-width: none;
+        }
+
+        .feature-card.large,
+        .feature-card.medium,
+        .feature-card.wide,
+        .feature-card.tall {
+          grid-column: span 12;
+        }
+
+        .nav-core,
+        .footer-shell {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .nav-links {
+          width: 100%;
+          justify-content: flex-start;
+        }
+      }
+
+      @media (max-width: 720px) {
+        body::before {
+          background-size: 56px 56px;
+        }
+
+        section {
+          padding: 4rem 0;
+        }
+
+        .hero {
+          padding-top: 2.8rem;
+        }
+
+        .shell {
+          width: min(calc(100% - 1.25rem), var(--max));
+        }
+
+        .hero-copy h1 {
+          font-size: clamp(2.75rem, 15vw, 4rem);
+          line-height: 0.98;
+        }
+
+        .button {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .bento {
+          grid-template-columns: 1fr;
+        }
+
+        .nav-links a,
+        .footer-links a {
+          width: 100%;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="floating-nav shell">
+      <div class="frame">
+        <div class="pane nav-core">
+          <a class="brand" href="#top" aria-label="PlaywrightAgent home">
+            <div class="brand-mark">P</div>
+            <div class="brand-copy">
+              <strong>PlaywrightAgent</strong>
+              <span>Governed test generation for VS Code</span>
+            </div>
+          </a>
+          <nav class="nav-links" aria-label="Primary">
+            <a href="#why">Why</a>
+            <a href="#flow">Flow</a>
+            <a href="#guardrails">Guardrails</a>
+            <a href="playwright_agent_architecture.html">Architecture</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="shell hero-grid">
+          <div class="hero-copy reveal">
+            <span class="eyebrow">VS Code extension for enterprise QA</span>
+            <h1>Governed Playwright generation for enterprise teams.</h1>
+            <p>
+              PlaywrightAgent converts requirement context into reviewable Playwright tests while keeping Jira and Confluence credentials inside local tooling.
+            </p>
+            <div class="cta-row">
+              <a class="button primary" href="playwright_agent_architecture.html">
+                Open architecture
+                <span class="orb" aria-hidden="true">↗</span>
+              </a>
+              <a class="button secondary" href="#flow">
+                See flow
+                <span class="orb" aria-hidden="true">↓</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="hero-visual reveal">
+            <div class="visual-shell">
+              <div class="visual-core">
+                <div class="visual-header">
+                  <div class="visual-title">
+                    <strong>Execution preview</strong>
+                    <span>Repo-aware planning, explicit approvals, local validation</span>
+                  </div>
+                  <div class="status-pill">Review gate active</div>
+                </div>
+
+                <div class="visual-grid">
+                  <div class="visual-panel">
+                    <p class="subline">Context inputs</p>
+                    <div class="chip-row">
+                      <span>Repository scan</span>
+                      <span>Jira issue graph</span>
+                      <span>Confluence pages</span>
+                      <span>User notes</span>
+                    </div>
+                    <div class="stat-stack">
+                      <div class="stat-line">
+                        <span>Confidence score</span>
+                        <span>Required before generation</span>
+                      </div>
+                      <div class="stat-line">
+                        <span>Plan review</span>
+                        <span>Per-test decision</span>
+                      </div>
+                      <div class="stat-line">
+                        <span>File write</span>
+                        <span>Diff preview first</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="code-panel">
+                    <small>Generated preview</small>
+                    <pre><code>test('invoice export', async ({
+  page,
+  invoicesPage
+}) =&gt; {
+  await invoicesPage.open(page);
+  await invoicesPage.exportInvoice('INV-204');
+  await expect(page.getByText(
+    'Export complete'
+  )).toBeVisible();
+});</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell logo-rail reveal">
+          <div class="frame logo-shell">
+            <div class="pane logo-core">
+              <a href="https://code.visualstudio.com/" aria-label="Visual Studio Code">
+                <img src="https://cdn.simpleicons.org/visualstudiocode/2563eb" alt="Visual Studio Code logo" />
+              </a>
+              <a href="https://playwright.dev/" aria-label="Playwright">
+                <img src="https://cdn.simpleicons.org/playwright/2563eb" alt="Playwright logo" />
+              </a>
+              <a href="https://www.atlassian.com/software/jira" aria-label="Jira">
+                <img src="https://cdn.simpleicons.org/jira/2563eb" alt="Jira logo" />
+              </a>
+              <a href="https://www.atlassian.com/software/confluence" aria-label="Confluence">
+                <img src="https://cdn.simpleicons.org/confluence/2563eb" alt="Confluence logo" />
+              </a>
+              <a href="https://github.com/" aria-label="GitHub">
+                <img src="https://cdn.simpleicons.org/github/2563eb" alt="GitHub logo" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="why">
+        <div class="shell reveal">
+          <h2 class="section-title">Built for teams that need control before automation.</h2>
+          <p class="section-copy">
+            The extension is not a blank test generator. It is a governed orchestration layer for repo analysis, ticket context, review, generation, and local execution.
+          </p>
+
+          <div class="bento">
+            <article class="frame feature-card large gradient-card">
+              <div class="pane">
+                <div>
+                  <span class="card-kicker">Approval workflow</span>
+                  <h3>Three blocking gates keep ownership with the team.</h3>
+                </div>
+                <div class="mini-grid">
+                  <span>Confidence stop before plan generation</span>
+                  <span>Per-test plan approval</span>
+                  <span>Generated diff review before writes</span>
+                  <span>Execution after explicit acceptance</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="frame feature-card medium">
+              <div class="pane">
+                <div>
+                  <span class="card-kicker">Secret boundary</span>
+                  <h3>Credentials stay local.</h3>
+                </div>
+                <p>Jira and Confluence access run through local tooling and environment variables. Prompt context gets the findings, not the keys.</p>
+              </div>
+            </article>
+
+            <article class="frame feature-card tall">
+              <div class="pane">
+                <div>
+                  <span class="card-kicker">Repo fidelity</span>
+                  <h3>Generation stays anchored to code already in your repo.</h3>
+                </div>
+                <div class="signal-list">
+                  <div>
+                    <span>Pattern detection</span>
+                    <span>POM or Screenplay</span>
+                  </div>
+                  <div>
+                    <span>Few-shot anchors</span>
+                    <span>Real repo examples</span>
+                  </div>
+                  <div>
+                    <span>Write safety</span>
+                    <span>Surgical updates only</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="frame feature-card wide">
+              <div class="pane">
+                <div>
+                  <span class="card-kicker">Production output</span>
+                  <h3>Directly runnable output, not speculative test prose.</h3>
+                </div>
+                <p>Generated scripts are shaped to local conventions, previewed before writes, then executed through the repo’s own Playwright runner for final feedback.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="flow">
+        <div class="shell reveal">
+          <h2 class="section-title">A controlled path from requirement to runnable spec.</h2>
+          <p class="section-copy">
+            Each stage narrows risk. Context gets fused, confidence gets scored, humans approve the plan, then the extension writes and runs only what survives review.
+          </p>
+
+          <div class="flow-wrap">
+            <div class="flow-bar">
+              <article class="frame flow-step">
+                <div class="pane">
+                  <strong>Scan</strong>
+                  <h3>Read repo shape</h3>
+                  <p>Detect stack, fixtures, folder patterns, and reusable test primitives on current workspace state.</p>
+                  <div class="line"></div>
+                </div>
+              </article>
+
+              <article class="frame flow-step">
+                <div class="pane">
+                  <strong>Collect</strong>
+                  <h3>Pull ticket context</h3>
+                  <p>Traverse Jira hierarchy, search Confluence, and merge direct user context without passing secrets into prompts.</p>
+                  <div class="line"></div>
+                </div>
+              </article>
+
+              <article class="frame flow-step">
+                <div class="pane">
+                  <strong>Score</strong>
+                  <h3>Decide confidence</h3>
+                  <p>Hard-stop low-confidence runs and surface exactly what is missing before any speculative generation starts.</p>
+                  <div class="line"></div>
+                </div>
+              </article>
+
+              <article class="frame flow-step">
+                <div class="pane">
+                  <strong>Approve</strong>
+                  <h3>Review each plan</h3>
+                  <p>Use a tabbed review surface to accept or reject each proposed test before generation and file writes.</p>
+                  <div class="line"></div>
+                </div>
+              </article>
+
+              <article class="frame flow-step">
+                <div class="pane">
+                  <strong>Run</strong>
+                  <h3>Write and execute</h3>
+                  <p>Preview diffs, update files surgically, then run the resulting tests locally and report what passed or failed.</p>
+                  <div class="line"></div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="guardrails">
+        <div class="shell reveal">
+          <h2 class="section-title">Governance is part of product quality.</h2>
+          <p class="section-copy">
+            The extension is designed for enterprise QA teams that need traceability, auditability, and code that can be trusted the first time it lands in the repo.
+          </p>
+
+          <div class="governance-grid">
+            <article class="frame rail-card">
+              <div class="pane">
+                <strong>What it protects</strong>
+                <h3>High-trust defaults all the way through.</h3>
+                <div class="rail-list">
+                  <div>No secret exposure inside model prompts</div>
+                  <div>Explicit human approval before every risky transition</div>
+                  <div>Audit-friendly logging around AI interactions</div>
+                  <div>Append and surgical update safety for existing specs</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="frame rail-card">
+              <div class="pane">
+                <strong>Documentation</strong>
+                <h3>Technical detail sits next to the landing page.</h3>
+                <div class="link-grid">
+                  <a class="frame link-block" href="playwright_agent_architecture.html">
+                    <div class="pane">
+                      <span>Deep dive</span>
+                      <strong>Architecture view</strong>
+                      <p>See the full pipeline, approval gates, and invariant model behind the extension.</p>
+                    </div>
+                  </a>
+
+                  <a class="frame link-block" href="tool.md">
+                    <div class="pane">
+                      <span>Agent contract</span>
+                      <strong>Tool definition</strong>
+                      <p>Read the orchestration role, safety rules, and execution flow used by the participant.</p>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <div class="frame">
+          <div class="pane footer-shell">
+            <div>
+              <strong>PlaywrightAgent</strong>
+              <div class="footer-note">VS Code participant for governed Playwright generation and local execution.</div>
+            </div>
+            <div class="footer-links">
+              <a href="#top">Back to top</a>
+              <a href="playwright_agent_architecture.html">Architecture</a>
+              <a href="tool.md">Tool spec</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!reduceMotion && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.22, rootMargin: '0px 0px -40px 0px' }
+        );
+
+        document.querySelectorAll('.reveal').forEach((node) => observer.observe(node));
+      } else {
+        document.querySelectorAll('.reveal').forEach((node) => node.classList.add('is-visible'));
+      }
+    </script>
+  </body>
+</html>
