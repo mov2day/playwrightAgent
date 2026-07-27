@@ -81,5 +81,50 @@
       "flaky-time-dependent": 19,
       "assertion-structure-only": 1
     }
+  },
+  {
+    "sha": "a0b5bba4e4ceadf92a9e198e7915eb387a43e705",
+    "date": "2026-07-27T21:25:23.443Z",
+    "score": 92,
+    "grade": "A-",
+    "dimensions": [
+      {
+        "id": "assertion-quality",
+        "score": 99,
+        "grade": "A+"
+      },
+      {
+        "id": "flakiness-risk",
+        "score": 88,
+        "grade": "B+"
+      },
+      {
+        "id": "isolation-risk",
+        "score": 100,
+        "grade": "A+"
+      },
+      {
+        "id": "naming-clarity",
+        "score": 82,
+        "grade": "B"
+      },
+      {
+        "id": "coverage-balance",
+        "score": 88,
+        "grade": "B+"
+      },
+      {
+        "id": "dead-test-risk",
+        "score": 100,
+        "grade": "A+"
+      }
+    ],
+    "ruleCounts": {
+      "coverage-happy-path-only": 17,
+      "naming-no-behavior-signal": 57,
+      "coverage-single-test-file": 4,
+      "flaky-time-dependent": 19,
+      "assertion-structure-only": 1
+    }
   }
 ]
