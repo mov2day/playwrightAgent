@@ -50,7 +50,7 @@ describe('confidence gate flow', () => {
 
     expect(response.decisionGate).toBe('approval_required');
     expect(response.state).toBe('awaiting_plan_approval');
-    expect(response.availableActions).toEqual(['continue', 'cancel']);
+    expect(response.availableActions).toEqual(['approve', 'reject', 'cancel']);
     expect(response.acceptsFreeText).toBe(true);
 
     const recomputed = handleGateFreeText(response.requestId, 'Add explicit acceptance criteria and selectors', {
@@ -64,14 +64,14 @@ describe('confidence gate flow', () => {
 
     expect(recomputed.userContext).toContain('Add explicit acceptance criteria and selectors');
     expect(recomputed.decisionGate).toBe('continue');
-    expect(recomputed.state).toBe('plan_approved');
+    expect(recomputed.state).toBe('awaiting_plan_approval');
 
     const actions = sink.getEvents().map((event) => event.action);
     expect(actions).toContain('free_text_received');
     expect(actions).toContain('confidence_recomputed_from_free_text');
   });
 
-  it('continue above 70', () => {
+  it('still requires explicit plan approval above 70', () => {
     const sink = new InMemoryEventSink();
     const orchestrator = new PipelineOrchestrator({ eventSink: sink });
 
@@ -84,6 +84,7 @@ describe('confidence gate flow', () => {
     });
 
     expect(response.decisionGate).toBe('continue');
-    expect(response.state).toBe('plan_approved');
+    expect(response.state).toBe('awaiting_plan_approval');
+    expect(response.availableActions).toEqual(['approve', 'reject', 'cancel']);
   });
 });

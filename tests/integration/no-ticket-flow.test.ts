@@ -44,4 +44,17 @@ describe('no-ticket and soft-fail plan flow', () => {
       source: 'user_input'
     });
   });
+
+  it('ignores standalone gate action tokens as plan context', () => {
+    const sink = new InMemoryEventSink();
+    const response = handlePlanCommand('cancel', {
+      eventSink: sink,
+      requestIdFactory: () => 'req_fixed_3',
+      now: () => new Date('2026-05-30T13:00:00.000Z')
+    });
+
+    expect(response.mode).toBe('no_ticket');
+    expect(response.userContext).toBeUndefined();
+    expect(response.warnings[0]).toContain('gate action token');
+  });
 });

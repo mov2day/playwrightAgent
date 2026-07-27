@@ -1,0 +1,219 @@
+
+<style>
+.stage{display:flex;flex-direction:column;gap:2px}
+.gate{border:2px solid #EF9F27;border-radius:10px;background:#FAEEDA;color:#633806;font-size:12px;font-weight:500;padding:5px 12px;text-align:center;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.gate i{font-size:14px;color:#BA7517}
+.flow-box{border-radius:8px;padding:9px 14px;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s;border:0.5px solid transparent}
+.flow-box:hover{opacity:.8}
+.auto{background:#E1F5EE;color:#085041;border-color:#0F6E56}
+.ai{background:#EEEDFE;color:#3C3489;border-color:#534AB7}
+.tool{background:#E6F1FB;color:#0C447C;border-color:#185FA5}
+.risk-tag{background:#FCEBEB;color:#791F1F;border:0.5px solid #E24B4A;border-radius:4px;font-size:11px;padding:2px 7px;display:inline-block;margin:2px 2px 0 0}
+.leg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)}
+.dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.arrow-v{width:2px;height:18px;background:var(--color-border-secondary);margin:0 auto}
+.section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.section-title{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.step-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.step-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;margin-top:1px}
+.detail-panel{display:none;background:var(--color-background-secondary);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--color-text-secondary);margin:6px 0 4px 32px;line-height:1.6}
+.detail-panel.open{display:block}
+.risk-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+h2.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+</style>
+
+<h2 class="sr-only">PlaywrightAgent VS Code extension architecture: 12-step pipeline with 3 approval gates, showing automated, AI, and tooling stages</h2>
+
+<div style="padding:1rem 0">
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+  <div style="font-size:15px;font-weight:500;color:var(--color-text-primary)">@PlaywrightAgent — pipeline architecture</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div class="leg"><div class="dot" style="background:#9FE1CB;border:0.5px solid #0F6E56"></div>tooling (no AI key)</div>
+    <div class="leg"><div class="dot" style="background:#CECBF6;border:0.5px solid #534AB7"></div>AI stage</div>
+    <div class="leg"><div class="dot" style="background:#B5D4F4;border:0.5px solid #185FA5"></div>automated</div>
+    <div class="leg"><div class="dot" style="background:#FAEEDA;border:2px solid #EF9F27"></div>approval gate</div>
+  </div>
+</div>
+
+<!-- PHASE 1: SETUP -->
+<div class="section">
+  <div class="section-title">phase 1 — setup &amp; context ingestion</div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#E1F5EE;color:#085041">1</div>
+    <div style="flex:1">
+      <div class="flow-box auto" onclick="toggle('d1')">Repo indexer — scan, detect pattern, cache on git HEAD <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d1">
+        Scans workspace files, detects TS/JS, identifies POM vs Screenplay via multi-signal analysis (folder names, base classes, import patterns). Caches result keyed to current git HEAD hash. On next run: HEAD diff check → skip if unchanged.<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: wrong pattern detection → all tests broken</span>
+          <span class="risk-tag">⚠ Risk: monorepo with mixed patterns</span>
+          <span class="risk-tag">⚠ Risk: cache hit on dirty working tree</span>
+        </div>
+        <div style="margin-top:6px;color:var(--color-text-primary);font-weight:500">Guard: require user confirmation of detected pattern before proceeding</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#E1F5EE;color:#085041">2</div>
+    <div style="flex:1">
+      <div class="flow-box tool" onclick="toggle('d2')">Jira client — pure tooling, reads env vars, deep-links epics/tasks/subtasks <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d2">
+        Reads <code>JIRA_BASE_URL</code>, <code>JIRA_API_TOKEN</code>, <code>JIRA_EMAIL</code> from env. Resolves full issue graph: epic → stories → subtasks → linked issues → Confluence pages. No AI involvement. Fails fast with actionable error if vars missing.<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: token in plaintext .env committed to repo</span>
+          <span class="risk-tag">⚠ Risk: Jira rate limiting on large epics</span>
+          <span class="risk-tag">⚠ Risk: circular issue links → infinite loop</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#E1F5EE;color:#085041">3</div>
+    <div style="flex:1">
+      <div class="flow-box tool" onclick="toggle('d3')">Confluence client — context-optimized query, no AI key exposure <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d3">
+        AI generates CQL query from Jira summary locally (no API call with raw key). Tooling executes query. Returns content ranked by relevance score. <code>CONFLUENCE_BASE_URL</code>, <code>CONFLUENCE_API_TOKEN</code> from env only.<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: CQL too broad → 50 irrelevant pages</span>
+          <span class="risk-tag">⚠ Risk: Confluence behind SSO, not API-accessible</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 2: ANALYSIS -->
+<div class="section">
+  <div class="section-title">phase 2 — context fusion &amp; confidence scoring</div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#EEEDFE;color:#3C3489">4</div>
+    <div style="flex:1">
+      <div class="flow-box ai" onclick="toggle('d4')">Context analyzer — score confluence relevance, chunk for context window <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d4">
+        Computes confidence score (0–1) from: Jira detail richness + Confluence hit quality + acceptance criteria presence + linked test cases. User-provided context always gets weight=1.0 (highest priority, overrides plan-level details).<br>
+        <div style="margin-top:8px;padding:8px;background:var(--color-background-primary);border-radius:6px;border:0.5px solid var(--color-border-tertiary)">
+          <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">Confidence thresholds</div>
+          <div style="font-size:12px;display:flex;flex-direction:column;gap:3px">
+            <div><span style="color:#0F6E56;font-weight:500">≥ 0.75</span> — proceed to plan generation</div>
+            <div><span style="color:#BA7517;font-weight:500">0.40–0.74</span> — show score, ask user how to proceed</div>
+            <div><span style="color:#A32D2D;font-weight:500">&lt; 0.40</span> — hard stop, never generate placeholder tests</div>
+          </div>
+        </div>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: score threshold gaming — user context inflates score artificially</span>
+          <span class="risk-tag">⚠ Risk: context window overflow — Jira+Confluence+Repo exceeds 200k tokens</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;margin:6px 0">
+    <div class="gate"><i class="ti ti-lock" aria-hidden="true"></i> GATE 0 — low confidence hard stop</div>
+  </div>
+</div>
+
+<!-- PHASE 3: PLANNING -->
+<div class="section">
+  <div class="section-title">phase 3 — plan generation</div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#EEEDFE;color:#3C3489">5</div>
+    <div style="flex:1">
+      <div class="flow-box ai" onclick="toggle('d5')">Skills loader + plan generator — repo patterns + context → test plan <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d5">
+        Loads skills from <code>.playwright-agent/skills/</code> (page objects, fixtures, helpers, naming conventions, assertion patterns). Feeds skills + repo examples + fused context to AI. Output: structured plan JSON — each test has: name, description, acceptance criteria covered, risk level, estimated LOC, page objects required.<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: AI invents page objects that don't exist in repo</span>
+          <span class="risk-tag">⚠ Risk: duplicate tests for scenarios already in repo</span>
+        </div>
+        <div style="margin-top:6px;font-weight:500;color:var(--color-text-primary);font-size:12px">Guard: plan references only existing repo symbols — validated against repo index before display</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;margin:6px 0">
+    <div class="gate"><i class="ti ti-user-check" aria-hidden="true"></i> GATE 1 — user approves/rejects individual tests in plan</div>
+  </div>
+</div>
+
+<!-- PHASE 4: GENERATION -->
+<div class="section">
+  <div class="section-title">phase 4 — test generation</div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#EEEDFE;color:#3C3489">6</div>
+    <div style="flex:1">
+      <div class="flow-box ai" onclick="toggle('d6')">Test generator — strictly pattern-bound, few-shot from repo, tsc-validated <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d6">
+        For each approved test: extract 2–3 real repo examples as few-shot anchors. Constrained system prompt: "generate ONLY using these imports, ONLY these page object methods, ONLY these fixture patterns." Post-generation: run <code>tsc --noEmit</code> on generated file. If type errors → re-attempt once → if still failing → surface to user, never silently continue.<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: tsc passes but test logic is wrong (type-correct hallucination)</span>
+          <span class="risk-tag">⚠ Risk: imports from non-existent paths</span>
+          <span class="risk-tag">⚠ Risk: AI uses deprecated page object methods</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;margin:6px 0">
+    <div class="gate"><i class="ti ti-eye" aria-hidden="true"></i> GATE 2 — user reviews generated test preview in chat</div>
+  </div>
+</div>
+
+<!-- PHASE 5: WRITE + RUN -->
+<div class="section">
+  <div class="section-title">phase 5 — file write, execution &amp; summary</div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#E6F1FB;color:#0C447C">7</div>
+    <div style="flex:1">
+      <div class="flow-box tool" onclick="toggle('d7')">File writer — diff-patch existing files, never overwrite blindly <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d7">
+        New file → create at computed path following repo conventions. Existing file → generate diff, apply via <code>WorkspaceEdit</code>, show unified diff to user before applying. Conflict on same test name → error, ask user to rename. All writes are reversible via VS Code undo stack.<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: path collision with existing test</span>
+          <span class="risk-tag">⚠ Risk: adding imports that break existing file's barrel exports</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num" style="background:#E6F1FB;color:#0C447C">8</div>
+    <div style="flex:1">
+      <div class="flow-box tool" onclick="toggle('d8')">Test runner — local playwright execution, HTML report, summary <i class="ti ti-chevron-down" style="font-size:12px;float:right;margin-top:1px"></i></div>
+      <div class="detail-panel" id="d8">
+        Runs only the newly written test files (filtered by path). Uses repo's own <code>playwright.config.ts</code>. Streams stdout to VS Code output channel. On completion: generates HTML report, opens in webview, posts summary to chat (pass/fail count, flaky indicators, duration).<br>
+        <div class="risk-row">
+          <span class="risk-tag">⚠ Risk: tests need running app/env — fail with misleading errors</span>
+          <span class="risk-tag">⚠ Risk: playwright not installed / version mismatch</span>
+          <span class="risk-tag">⚠ Risk: test runner hangs — no timeout kills it</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEGEND of key invariants -->
+<div style="background:var(--color-background-secondary);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--color-text-secondary);line-height:1.8;margin-top:4px">
+  <div style="font-weight:500;color:var(--color-text-primary);margin-bottom:6px;font-size:13px">Core invariants — never violated</div>
+  <div>🔒 API keys never passed to AI — tooling only uses env vars directly</div>
+  <div>🔒 No test generated below confidence threshold — hard stop, not warning</div>
+  <div>🔒 All 3 approval gates are blocking — webview crash = pipeline halt, not bypass</div>
+  <div>🔒 Generated code validated by <code>tsc --noEmit</code> before user preview</div>
+  <div>🔒 AI anchored to real repo examples as few-shot — no open-ended generation</div>
+  <div>🔒 Existing file edits go through diff-patch — old code never silently clobbered</div>
+</div>
+</div>
+
+<script>
+function toggle(id){
+  const el=document.getElementById(id);
+  if(el)el.classList.toggle('open');
+}
+</script>

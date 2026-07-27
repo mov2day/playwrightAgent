@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LocalToolCommandResult } from '../../src/adapters/localToolRunner';
+import { InMemoryEventSink } from '../../src/adapters/eventSink';
 import {
   createScopedRunRequest,
   type ScopedRunRequest
 } from '../../src/pipeline/execution/contracts';
+import { PipelineOrchestrator } from '../../src/pipeline/orchestrator';
 import { executeScopedRun } from '../../src/pipeline/execution/scopedRunExecutor';
+import { handleExecutionRunRequest } from '../../src/participant/handler';
 
 function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): LocalToolCommandResult {
   return {
@@ -18,6 +21,34 @@ function makeCommandResult(overrides: Partial<LocalToolCommandResult> = {}): Loc
     timedOut: false,
     ...overrides
   };
+}
+
+function makePlaywrightJsonResult(overrides: {
+  passCount?: number;
+  failCount?: number;
+  failures?: Array<{ file: string; message: string }>;
+} = {}): string {
+  const failures = overrides.failures ?? [];
+  return JSON.stringify({
+    suites: failures.map((failure) => ({
+      file: failure.file,
+      specs: [{
+        title: failure.file,
+        tests: [{
+          results: [{
+            status: 'failed',
+            error: {
+              message: failure.message
+            }
+          }]
+        }]
+      }]
+    })),
+    stats: {
+      expected: overrides.passCount ?? 0,
+      unexpected: overrides.failCount ?? failures.length
+    }
+  });
 }
 
 describe('execution run flow', () => {
@@ -104,6 +135,36 @@ describe('execution run flow', () => {
     ]);
   });
 
+  it('passes workspace cwd into scoped execution runner', async () => {
+    const runnerCalls: Array<{ command: string; args: string[]; cwd?: string }> = [];
+
+    await executeScopedRun(createScopedRunRequest({
+      requestId: 'req_execution_cwd',
+      generatedOrUpdatedTargets: ['tests/e2e/auth.spec.ts']
+    }), {
+      cwd: '/workspace/project',
+      commandRunner: async (command, args, options) => {
+        runnerCalls.push({
+          command,
+          args,
+          cwd: options?.cwd
+        });
+        return makeCommandResult({ command, args });
+      }
+    });
+
+    expect(runnerCalls).toEqual([{
+      command: 'npx',
+      args: [
+        'playwright',
+        'test',
+        'tests/e2e/auth.spec.ts',
+        '--reporter=json'
+      ],
+      cwd: '/workspace/project'
+    }]);
+  });
+
   it('fails closed when generated/updated scope has no targets', async () => {
     const result = await executeScopedRun(createScopedRunRequest({
       requestId: 'req_execution_4',
@@ -114,5 +175,87 @@ describe('execution run flow', () => {
 
     expect(result.result.ok).toBe(false);
     expect(result.result.error).toContain('No generated/updated targets available for scoped execution.');
+  });
+
+  it('runs scoped execution from participant trigger only after write completion', async () => {
+    const sink = new InMemoryEventSink();
+    const requestId = 'req_execution_5';
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now: () => new Date('2026-06-01T04:00:00.000Z'),
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'execution-run-flow'
+      })
+    });
+
+    orchestrator.startSession(requestId, 'completed');
+
+    const runResult = await handleExecutionRunRequest(requestId, {
+      generatedOrUpdatedTargets: ['tests/e2e/account.spec.ts'],
+      commandRunner: async (command, args) => makeCommandResult({
+        command,
+        args,
+        stdout: makePlaywrightJsonResult({
+          passCount: 2,
+          failCount: 0
+        })
+      })
+    }, {
+      orchestrator
+    });
+
+    expect(runResult.ok).toBe(true);
+    expect(runResult.run?.commandPreview.args).toEqual([
+      'playwright',
+      'test',
+      'tests/e2e/account.spec.ts',
+      '--reporter=json'
+    ]);
+    expect(runResult.runSummary?.summary.passCount).toBe(2);
+    expect(runResult.runSummary?.summary.failCount).toBe(0);
+    expect(runResult.runSummary?.summary.failingFiles).toEqual([]);
+    expect(runResult.runSummary?.summary.topErrors).toEqual([]);
+    expect(runResult.runSummary?.summary.bucketCounts).toEqual({
+      test_authoring: 0,
+      application_behavior: 0,
+      environment_or_tooling: 0
+    });
+    const actions = sink.getEvents().map((event) => event.action);
+    expect(actions.indexOf('execution_run_requested')).toBeGreaterThanOrEqual(0);
+    expect(actions.indexOf('execution_command_preview')).toBeGreaterThan(actions.indexOf('execution_run_requested'));
+  });
+
+  it('blocks participant run trigger before workflow reaches completed state', async () => {
+    const sink = new InMemoryEventSink();
+    const requestId = 'req_execution_6';
+    const orchestrator = new PipelineOrchestrator({
+      eventSink: sink,
+      now: () => new Date('2026-06-01T05:00:00.000Z'),
+      stageEntryGateEvaluator: (stage) => ({
+        stage,
+        blocked: false,
+        fail_closed: false,
+        requires_user_decision: false,
+        reasons: [],
+        manifest_hash: 'execution-run-flow'
+      })
+    });
+
+    orchestrator.startSession(requestId, 'ready_to_write');
+
+    const runResult = await handleExecutionRunRequest(requestId, {
+      generatedOrUpdatedTargets: ['tests/e2e/account.spec.ts'],
+      commandRunner: async (command, args) => makeCommandResult({ command, args })
+    }, {
+      orchestrator
+    });
+
+    expect(runResult.ok).toBe(false);
+    expect(runResult.errorCode).toBe('ILLEGAL_TRANSITION');
   });
 });

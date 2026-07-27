@@ -59,7 +59,7 @@
 
 - [x] **RUN-01**: User can trigger run of newly created/updated Playwright tests from workflow.
 - [x] **RUN-02**: Agent reports pass/fail results with enough detail to distinguish likely test vs app failures.
-- [ ] **RUN-03**: On failures, agent attempts one controlled fix cycle and then asks user for next action if unresolved.
+- [x] **RUN-03**: On failures, agent attempts one controlled fix cycle and then asks user for next action if unresolved.
 - [x] **RUN-04**: Agent supports quick chat actions (`approve`, `reject`, `continue`, `cancel`) at gate stages.
 - [x] **RUN-05**: User freeform comments can trigger regeneration and return to approval gates.
 
@@ -67,8 +67,8 @@
 
 - [ ] **SECU-01**: Jira and Confluence credentials remain in environment variables consumed by local tooling only.
 - [ ] **SECU-02**: No secrets/tokens are sent to AI model prompts.
-- [ ] **SECU-03**: Agent logs all AI interactions and gate decisions for audit review.
-- [ ] **SECU-04**: Logs redact sensitive data before persistence.
+- [x] **SECU-03**: Agent logs all AI interactions and gate decisions for audit review.
+- [x] **SECU-04**: Logs redact sensitive data before persistence.
 
 ## v2 Requirements
 
@@ -127,13 +127,13 @@
 | GEN-06 | Phase 4 | Pending |
 | RUN-01 | Phase 5 | Complete |
 | RUN-02 | Phase 5 | Complete |
-| RUN-03 | Phase 5 | Pending |
+| RUN-03 | Phase 5 | Complete |
 | RUN-04 | Phase 3 | Complete |
 | RUN-05 | Phase 3 | Complete |
 | SECU-01 | Phase 6 | Pending |
 | SECU-02 | Phase 6 | Pending |
-| SECU-03 | Phase 5 | Pending |
-| SECU-04 | Phase 5 | Pending |
+| SECU-03 | Phase 5 | Complete |
+| SECU-04 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 42 total

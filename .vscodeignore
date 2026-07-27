@@ -1,0 +1,27 @@
+# Development and planning artifacts
+.planning/**
+.github/**
+.vscode/**
+coverage/**
+tests/**
+src/**
+
+# Build/test configuration sources not needed in packaged runtime
+eslint.config.js
+vitest.config.ts
+tsconfig*.json
+
+# Dependency content not required at runtime
+node_modules/**/.github/**
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/docs/**
+node_modules/**/doc/**
+node_modules/**/example/**
+node_modules/**/examples/**
+node_modules/**/*.map
+node_modules/**/*.md
+
+# Local artifacts
+*.vsix
+.DS_Store

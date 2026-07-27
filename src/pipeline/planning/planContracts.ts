@@ -5,6 +5,9 @@ export type ScenarioApprovalState = 'pending' | 'approved' | 'rejected' | 'needs
 export interface ScenarioCommentRef {
   commentId: string;
   target: 'scenario' | 'global';
+  classification?: 'clarification' | 'constraint' | 'bug' | 'new_context';
+  text?: string;
+  createdAt?: string;
 }
 
 export interface ScenarioPlanRecord {

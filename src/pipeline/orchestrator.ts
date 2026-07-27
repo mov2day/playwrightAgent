@@ -1,11 +1,35 @@
 import type { EventSink } from '../adapters/eventSink';
+import { redactSensitiveText, redactSensitiveValue, type LocalToolCommandResult } from '../adapters/localToolRunner';
 import { QUICK_ACTIONS, type QuickAction } from '../participant/actions';
 import type { PreviewActionEnvelope } from '../ui/previewActions';
 import type { ReviewActionEnvelope } from '../ui/reviewActions';
 import type { ConfidenceGate } from './confidence/confidenceContracts';
-import { createPipelineEvent } from './events';
+import {
+  createPipelineEvent,
+  type PipelineDecisionAction,
+  type PipelineInteractionType
+} from './events';
+import {
+  createScopedRunRequest,
+  type ScopedRunRequest,
+  type ScopedRunRequestInput
+} from './execution/contracts';
+import {
+  executeScopedRun as runScopedExecution,
+  type ScopedRunExecutionResult,
+  type ScopedRunExecutorDeps
+} from './execution/scopedRunExecutor';
+import {
+  buildExecutionRunSummary,
+  type ExecutionRunSummaryReport
+} from './execution/reportSummarizer';
+import type {
+  ExecutionFailureBucket,
+  ExecutionFailureInput
+} from './execution/failureClassifier';
 import {
   runPostWriteLintTypeGuardrail,
+  type LintTypeGuardrailRunResult,
   type LintTypeRunnerDeps
 } from './guardrails/lintTypeRunner';
 import {
@@ -96,7 +120,10 @@ interface PipelineSession {
   previewVersionCounter: number;
   approvedPreviewVersion?: string;
   pendingGuardrailEscalation?: LintTypeEscalationBundle;
+  pendingGuardrailSource?: 'write' | 'execution';
+  pendingExecutionRunRequest?: ScopedRunRequest;
   guardrailDecisionHistory: GuardrailDecisionRecord[];
+  lastGeneratedOrUpdatedTargets: string[];
 }
 
 export interface ReviewSnapshot {
@@ -111,6 +138,7 @@ export interface ReviewSnapshot {
   excludedCount: number;
   regenerationScenarioIds: string[];
   impactedRequirementIds: string[];
+  globalComments: ReviewCommentRecord[];
   records: Record<string, ScenarioReviewRecord>;
 }
 
@@ -118,6 +146,7 @@ export interface OrchestratorDeps {
   eventSink: EventSink;
   now?: () => Date;
   rootDir?: string;
+  skillManifestRootDir?: string;
   stageEntryGateEvaluator?: StageEntryGateEvaluator;
 }
 
@@ -156,7 +185,8 @@ export interface ActionTransitionResult {
     | 'PREVIEW_APPROVAL_REQUIRED'
     | 'PREVIEW_VERSION_MISMATCH'
     | 'GUARDRAIL_ESCALATION_REQUIRED'
-    | 'WRITE_EXECUTION_FAILED';
+    | 'WRITE_EXECUTION_FAILED'
+    | 'EXECUTION_RUN_FAILED';
   stageEntry?: StageEntryDecision;
 }
 
@@ -167,6 +197,27 @@ export interface ReviewActionResult extends ActionTransitionResult {
 
 export interface WriteExecutionResult extends ActionTransitionResult {
   report?: WriteReport;
+  guardrail?: RetryEscalationOutcome;
+  escalation?: LintTypeEscalationBundle;
+}
+
+export interface ExecuteScopedRunOptions {
+  scopeMode?: ScopedRunRequestInput['scopeMode'];
+  generatedTargets?: readonly string[];
+  updatedTargets?: readonly string[];
+  generatedOrUpdatedTargets?: readonly string[];
+  commandRunner?: ScopedRunExecutorDeps['commandRunner'];
+  applyScopedAutoFix?: (targetFiles: readonly string[]) => Promise<ScopedAutoFixResult>;
+}
+
+export interface ExecutionRunResult extends ActionTransitionResult {
+  run?: ScopedRunExecutionResult;
+  runSummary?: ExecutionRunSummaryReport;
+  failureDiagnostics?: Array<{
+    targetPath: string;
+    bucket: ExecutionFailureBucket;
+    bucketReason: string;
+  }>;
   guardrail?: RetryEscalationOutcome;
   escalation?: LintTypeEscalationBundle;
 }
@@ -218,6 +269,341 @@ function normalizeTargetFiles(targetFiles: readonly string[]): string[] {
     .sort((left, right) => left.localeCompare(right));
 }
 
+function collectGeneratedOrUpdatedTargets(report: WriteReport): string[] {
+  return normalizeTargetFiles(
+    report.outcomes
+      .filter((outcome) => outcome.status === 'patched' || outcome.status === 'created')
+      .map((outcome) => outcome.targetPath)
+  );
+}
+
+function toExecutionGuardrailResult(runResult: ScopedRunExecutionResult): LintTypeGuardrailRunResult {
+  const stageResult = {
+    stage: 'lint' as const,
+    startedAt: runResult.startedAt,
+    completedAt: runResult.completedAt,
+    durationMs: runResult.durationMs,
+    result: runResult.result
+  };
+
+  if (runResult.result.ok) {
+    return {
+      status: 'passed',
+      stageResults: [stageResult]
+    };
+  }
+
+  return {
+    status: 'failed_needs_retry',
+    stageResults: [stageResult],
+    failedStage: 'lint'
+  };
+}
+
+interface ParsedExecutionReport {
+  passCount?: number;
+  failCount?: number;
+  totalCount?: number;
+  failures: ExecutionFailureInput[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function asString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized ? normalized : undefined;
+}
+
+function asNonNegativeInteger(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+
+  return Math.floor(value);
+}
+
+function firstNonEmptyLine(value: string): string | undefined {
+  for (const line of value.split(/\r?\n/)) {
+    const normalized = line.trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
+}
+
+function extractLocationPath(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return asString(value.file);
+}
+
+function extractErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return asString(value);
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return asString(value.message)
+    ?? asString(value.value)
+    ?? asString(value.stack)
+    ?? extractErrorMessage(value.error);
+}
+
+function isFailedPlaywrightStatus(status: string | undefined): boolean {
+  if (!status) {
+    return false;
+  }
+
+  const normalized = status.toLowerCase();
+  return normalized === 'failed'
+    || normalized === 'timedout'
+    || normalized === 'timed_out'
+    || normalized === 'interrupted';
+}
+
+function createExecutionFailure(
+  targetPath: string | undefined,
+  message: string,
+  commandResult: LocalToolCommandResult,
+  timedOut: boolean
+): ExecutionFailureInput {
+  return {
+    targetPath: targetPath ?? 'unknown',
+    message,
+    stdout: commandResult.stdout,
+    stderr: commandResult.stderr,
+    exitCode: commandResult.exitCode,
+    timedOut
+  };
+}
+
+function collectFailuresFromTestNode(
+  testNode: Record<string, unknown>,
+  inheritedTargetPath: string | undefined,
+  commandResult: LocalToolCommandResult
+): ExecutionFailureInput[] {
+  const failures: ExecutionFailureInput[] = [];
+  const targetPath = asString(testNode.file)
+    ?? extractLocationPath(testNode.location)
+    ?? inheritedTargetPath;
+  const results = Array.isArray(testNode.results) ? testNode.results : [];
+  const testTitle = asString(testNode.title);
+
+  for (const resultValue of results) {
+    if (!isRecord(resultValue)) {
+      continue;
+    }
+
+    const status = asString(resultValue.status);
+    if (!isFailedPlaywrightStatus(status)) {
+      continue;
+    }
+
+    const message = extractErrorMessage(resultValue.error)
+      ?? extractErrorMessage(testNode.error)
+      ?? testTitle
+      ?? firstNonEmptyLine(commandResult.stderr)
+      ?? commandResult.error
+      ?? 'Playwright run failed with no structured error message.';
+
+    failures.push(createExecutionFailure(
+      targetPath,
+      message,
+      commandResult,
+      commandResult.timedOut || (status?.toLowerCase() === 'timedout')
+    ));
+  }
+
+  if (failures.length > 0) {
+    return failures;
+  }
+
+  const fallbackStatus = asString(testNode.status);
+  if (!isFailedPlaywrightStatus(fallbackStatus)) {
+    return failures;
+  }
+
+  const fallbackMessage = extractErrorMessage(testNode.error)
+    ?? testTitle
+    ?? firstNonEmptyLine(commandResult.stderr)
+    ?? commandResult.error
+    ?? 'Playwright test failed.';
+
+  failures.push(createExecutionFailure(
+    targetPath,
+    fallbackMessage,
+    commandResult,
+    commandResult.timedOut || (fallbackStatus?.toLowerCase() === 'timedout')
+  ));
+  return failures;
+}
+
+function collectFailuresFromSpecNode(
+  specNode: Record<string, unknown>,
+  inheritedTargetPath: string | undefined,
+  commandResult: LocalToolCommandResult
+): ExecutionFailureInput[] {
+  const targetPath = asString(specNode.file)
+    ?? extractLocationPath(specNode.location)
+    ?? inheritedTargetPath;
+  const tests = Array.isArray(specNode.tests) ? specNode.tests : [];
+  const failures: ExecutionFailureInput[] = [];
+
+  for (const testValue of tests) {
+    if (!isRecord(testValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromTestNode(testValue, targetPath, commandResult));
+  }
+
+  return failures;
+}
+
+function collectFailuresFromSuiteNode(
+  suiteNode: Record<string, unknown>,
+  inheritedTargetPath: string | undefined,
+  commandResult: LocalToolCommandResult
+): ExecutionFailureInput[] {
+  const targetPath = asString(suiteNode.file)
+    ?? extractLocationPath(suiteNode.location)
+    ?? inheritedTargetPath;
+  const failures: ExecutionFailureInput[] = [];
+  const specs = Array.isArray(suiteNode.specs) ? suiteNode.specs : [];
+  const childSuites = Array.isArray(suiteNode.suites) ? suiteNode.suites : [];
+
+  for (const specValue of specs) {
+    if (!isRecord(specValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromSpecNode(specValue, targetPath, commandResult));
+  }
+
+  for (const suiteValue of childSuites) {
+    if (!isRecord(suiteValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromSuiteNode(suiteValue, targetPath, commandResult));
+  }
+
+  return failures;
+}
+
+function parseExecutionReport(
+  commandResult: LocalToolCommandResult
+): ParsedExecutionReport {
+  const stdout = commandResult.stdout.trim();
+  if (!stdout) {
+    return { failures: [] };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    return { failures: [] };
+  }
+
+  if (!isRecord(parsed)) {
+    return { failures: [] };
+  }
+
+  const stats = isRecord(parsed.stats) ? parsed.stats : undefined;
+  const passCount = asNonNegativeInteger(stats?.passed)
+    ?? asNonNegativeInteger(stats?.expected);
+  const failCount = asNonNegativeInteger(stats?.failed)
+    ?? asNonNegativeInteger(stats?.unexpected);
+  const totalCount = asNonNegativeInteger(stats?.total);
+  const failures: ExecutionFailureInput[] = [];
+  const suites = Array.isArray(parsed.suites) ? parsed.suites : [];
+
+  for (const suiteValue of suites) {
+    if (!isRecord(suiteValue)) {
+      continue;
+    }
+    failures.push(...collectFailuresFromSuiteNode(suiteValue, undefined, commandResult));
+  }
+
+  return {
+    passCount,
+    failCount,
+    totalCount,
+    failures
+  };
+}
+
+function buildFallbackFailures(
+  runResult: ScopedRunExecutionResult
+): ExecutionFailureInput[] {
+  if (runResult.result.ok) {
+    return [];
+  }
+
+  const message = firstNonEmptyLine(runResult.result.stderr)
+    ?? firstNonEmptyLine(runResult.result.error ?? '')
+    ?? firstNonEmptyLine(runResult.result.stdout)
+    ?? 'Playwright run failed with no diagnostics.';
+  const fallbackTargets = runResult.targets.length > 0
+    ? runResult.targets
+    : ['unknown'];
+
+  return fallbackTargets.map((targetPath) => ({
+    targetPath,
+    message,
+    stdout: runResult.result.stdout,
+    stderr: runResult.result.stderr,
+    exitCode: runResult.result.exitCode,
+    timedOut: runResult.result.timedOut
+  }));
+}
+
+function buildExecutionSummaryFromRun(
+  requestId: string,
+  runResult: ScopedRunExecutionResult
+): ExecutionRunSummaryReport {
+  const parsed = parseExecutionReport(runResult.result);
+  const failures = parsed.failures.length > 0
+    ? parsed.failures
+    : buildFallbackFailures(runResult);
+  const failCount = parsed.failCount ?? failures.length;
+  const passCount = parsed.passCount
+    ?? (typeof parsed.totalCount === 'number'
+      ? Math.max(0, parsed.totalCount - failCount)
+      : (runResult.result.ok ? Math.max(0, runResult.targets.length - failCount) : 0));
+
+  return buildExecutionRunSummary({
+    requestId,
+    commandResult: runResult.result,
+    passCount,
+    failCount,
+    failures
+  });
+}
+
+function toFailureDiagnostics(runSummary: ExecutionRunSummaryReport): Array<{
+  targetPath: string;
+  bucket: ExecutionFailureBucket;
+  bucketReason: string;
+}> {
+  return runSummary.expandable.failures.map((failure) => ({
+    targetPath: failure.targetPath,
+    bucket: failure.bucket,
+    bucketReason: failure.bucketReason
+  }));
+}
+
 export class PipelineOrchestrator {
   private readonly sessions = new Map<string, PipelineSession>();
 
@@ -227,15 +613,18 @@ export class PipelineOrchestrator {
 
   private readonly rootDir: string;
 
+  private readonly skillManifestRootDir: string;
+
   private readonly stageEntryGateEvaluator: StageEntryGateEvaluator;
 
   constructor(deps: OrchestratorDeps) {
     this.eventSink = deps.eventSink;
     this.now = deps.now ?? (() => new Date());
     this.rootDir = deps.rootDir ?? process.cwd();
+    this.skillManifestRootDir = deps.skillManifestRootDir ?? this.rootDir;
     this.stageEntryGateEvaluator = deps.stageEntryGateEvaluator ?? ((stage) => {
       try {
-        const manifest = buildSkillManifest({ rootDir: this.rootDir });
+        const manifest = buildSkillManifest({ rootDir: this.skillManifestRootDir });
         return evaluateSkillQualityGate(manifest, stage);
       } catch (error) {
         const message = error instanceof Error
@@ -262,7 +651,10 @@ export class PipelineOrchestrator {
       previewVersionCounter: 1,
       approvedPreviewVersion: undefined,
       pendingGuardrailEscalation: undefined,
-      guardrailDecisionHistory: []
+      pendingGuardrailSource: undefined,
+      pendingExecutionRunRequest: undefined,
+      guardrailDecisionHistory: [],
+      lastGeneratedOrUpdatedTargets: []
     };
 
     this.sessions.set(requestId, session);
@@ -272,6 +664,28 @@ export class PipelineOrchestrator {
 
   getSession(requestId: string): PipelineSession | undefined {
     return this.sessions.get(requestId);
+  }
+
+  getEventSink(): EventSink {
+    return this.eventSink;
+  }
+
+  getPendingGuardrailEscalation(requestId: string): LintTypeEscalationBundle | undefined {
+    return this.sessions.get(requestId)?.pendingGuardrailEscalation;
+  }
+
+  getPendingExecutionRunRequest(requestId: string): ScopedRunRequest | undefined {
+    const pending = this.sessions.get(requestId)?.pendingExecutionRunRequest;
+    if (!pending) {
+      return undefined;
+    }
+
+    return {
+      requestId: pending.requestId,
+      scopeMode: pending.scopeMode,
+      targetSource: pending.targetSource,
+      targets: [...pending.targets]
+    };
   }
 
   seedReviewRecords(requestId: string, scenarios: readonly ScenarioPlanRecord[]): boolean {
@@ -410,7 +824,7 @@ export class PipelineOrchestrator {
     this.emit(requestId, 'gate', 'confidence_decision_recorded', session.state, {
       confidenceProfileId,
       decisionGate
-    }, confidenceProfileId, decisionGate);
+    }, confidenceProfileId, decisionGate, 'gate_decision');
   }
 
   appendFreeTextContext(requestId: string, text: string): boolean {
@@ -521,6 +935,10 @@ export class PipelineOrchestrator {
       };
     }
 
+    if (session.state === 'awaiting_guardrail_decision') {
+      return this.applyGuardrailDecision(requestId, action);
+    }
+
     let targetState: PipelineState | undefined;
 
     if (action === 'cancel') {
@@ -538,9 +956,7 @@ export class PipelineOrchestrator {
         targetState = 'script_rejected';
       }
     } else if (action === 'continue') {
-      if (session.state === 'awaiting_plan_approval' && session.decisionGate === 'approval_required') {
-        targetState = 'plan_approved';
-      } else if (session.state === 'plan_approved') {
+      if (session.state === 'plan_approved') {
         targetState = 'awaiting_script_approval';
       } else if (session.state === 'script_approved') {
         if (!hasCurrentPreviewApproval(session)) {
@@ -574,6 +990,180 @@ export class PipelineOrchestrator {
     }
 
     return this.transition(requestId, targetState, action);
+  }
+
+  applyGuardrailDecision(
+    requestId: string,
+    action: QuickAction,
+    comment?: string
+  ): ActionTransitionResult {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    const escalation = session.pendingGuardrailEscalation;
+    const escalationSource = session.pendingGuardrailSource ?? 'write';
+    if (session.state !== 'awaiting_guardrail_decision' || !escalation) {
+      this.emit(requestId, 'gate', 'quick_action_unmapped', session.state, {
+        action,
+        reason: 'guardrail_not_blocked'
+      });
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'UNMAPPED_ACTION'
+      };
+    }
+
+    let targetState: PipelineState | undefined;
+    if (escalationSource === 'execution') {
+      if (action === 'approve' || action === 'continue') {
+        targetState = 'completed';
+      } else if (action === 'reject' || action === 'cancel') {
+        targetState = 'cancelled';
+      }
+    } else if (action === 'approve') {
+      targetState = 'completed';
+    } else if (action === 'continue') {
+      targetState = 'ready_to_write';
+    } else if (action === 'reject' || action === 'cancel') {
+      targetState = 'cancelled';
+    }
+
+    if (!targetState) {
+      this.emit(requestId, 'gate', 'quick_action_unmapped', session.state, {
+        action,
+        reason: 'guardrail_invalid_action'
+      });
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'UNMAPPED_ACTION'
+      };
+    }
+
+    const transition = transitionState(session.state, targetState);
+    if (!transition.ok) {
+      this.emit(requestId, 'gate', 'transition_blocked', session.state, {
+        attempted: targetState,
+        action: `guardrail_${action}`,
+        errorCode: transition.errorCode
+      });
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: transition.errorCode
+      };
+    }
+
+    const decidedAt = this.now().toISOString();
+    const normalizedComment = sanitizeReason(comment) ?? 'No comment provided.';
+
+    session.guardrailDecisionHistory.push({
+      action,
+      comment: normalizedComment,
+      decidedAt
+    });
+    session.pendingGuardrailEscalation = undefined;
+    session.pendingGuardrailSource = undefined;
+    if (!(escalationSource === 'execution' && action === 'continue')) {
+      session.pendingExecutionRunRequest = undefined;
+    }
+    session.state = transition.to;
+    session.updatedAt = decidedAt;
+
+    this.emit(requestId, 'gate', 'guardrail_decision_recorded', session.state, {
+      action,
+      comment: normalizedComment,
+      command: escalation.command,
+      affectedFiles: escalation.affectedFiles,
+      topErrors: escalation.topErrors,
+      attemptedFixSummary: escalation.attemptedFixSummary
+    }, session.confidenceProfileId, session.decisionGate, 'gate_decision', action, normalizedComment);
+
+    this.emit(requestId, 'gate', 'transition_applied', session.state, {
+      from: transition.from,
+      to: transition.to,
+      action: `guardrail_decision_${action}`
+    });
+
+    if (escalationSource === 'execution') {
+      if (action === 'continue') {
+        this.emit(requestId, 'orchestrator', 'manual_fix_confirmed', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      } else if (action === 'approve') {
+        this.emit(requestId, 'orchestrator', 'execution_decision_approved', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      } else if (action === 'reject') {
+        this.emit(requestId, 'orchestrator', 'execution_decision_rejected', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      } else if (action === 'cancel') {
+        this.emit(requestId, 'orchestrator', 'execution_decision_cancelled', session.state, {
+          comment: normalizedComment
+        }, session.confidenceProfileId, session.decisionGate);
+      }
+    }
+
+    return {
+      ok: true,
+      requestId,
+      from: transition.from,
+      to: transition.to
+    };
+  }
+
+  async applyExecutionGuardrailDecision(
+    requestId: string,
+    action: QuickAction,
+    comment?: string,
+    options: Pick<ExecuteScopedRunOptions, 'commandRunner' | 'applyScopedAutoFix'> = {}
+  ): Promise<ActionTransitionResult | ExecutionRunResult> {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    const pendingSource = session.pendingGuardrailSource;
+    const pendingRunRequest = this.getPendingExecutionRunRequest(requestId);
+    const decisionResult = this.applyGuardrailDecision(requestId, action, comment);
+    if (!decisionResult.ok) {
+      return decisionResult;
+    }
+
+    if (action !== 'continue' || pendingSource !== 'execution' || !pendingRunRequest) {
+      return decisionResult;
+    }
+
+    const rerunSession = this.sessions.get(requestId);
+    this.emit(requestId, 'orchestrator', 'execution_rerun_requested', rerunSession?.state, {
+      scopeMode: pendingRunRequest.scopeMode,
+      targetCount: pendingRunRequest.targets.length,
+      targetSource: pendingRunRequest.targetSource
+    }, rerunSession?.confidenceProfileId, rerunSession?.decisionGate);
+
+    return this.executeScopedRun(requestId, {
+      scopeMode: pendingRunRequest.scopeMode,
+      generatedOrUpdatedTargets: pendingRunRequest.targets,
+      commandRunner: options.commandRunner,
+      applyScopedAutoFix: options.applyScopedAutoFix
+    });
   }
 
   executeWritePlan(requestId: string, entries: readonly SurgicalWritePlanEntryInput[]): WriteExecutionResult {
@@ -656,6 +1246,7 @@ export class PipelineOrchestrator {
         preserveExisting: true
       });
       const report = buildWriteReportSummary(requestId, session.previewVersion, writeResult.outcomes);
+      session.lastGeneratedOrUpdatedTargets = collectGeneratedOrUpdatedTargets(report);
 
       session.state = transition.to;
       session.updatedAt = this.now().toISOString();
@@ -706,6 +1297,17 @@ export class PipelineOrchestrator {
         requestId,
         from: 'initialized',
         errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    if (session.state === 'awaiting_guardrail_decision' && session.pendingGuardrailEscalation) {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        to: session.state,
+        errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
+        escalation: session.pendingGuardrailEscalation
       };
     }
 
@@ -768,6 +1370,7 @@ export class PipelineOrchestrator {
         preserveExisting: true
       });
       const report = buildWriteReportSummary(requestId, session.previewVersion, writeResult.outcomes);
+      session.lastGeneratedOrUpdatedTargets = collectGeneratedOrUpdatedTargets(report);
 
       const targetFiles = normalizeTargetFiles(
         options.targetFiles ?? writeResult.outcomes
@@ -793,10 +1396,25 @@ export class PipelineOrchestrator {
       });
 
       if (guardrail.status === 'escalated') {
+        const blockedTransition = transitionState(session.state, 'awaiting_guardrail_decision');
+        if (!blockedTransition.ok) {
+          return {
+            ok: false,
+            requestId,
+            from: session.state,
+            errorCode: blockedTransition.errorCode
+          };
+        }
+
+        session.state = blockedTransition.to;
         session.pendingGuardrailEscalation = guardrail.escalation;
+        session.pendingGuardrailSource = 'write';
+        session.pendingExecutionRunRequest = undefined;
         session.updatedAt = this.now().toISOString();
 
         this.emit(requestId, 'gate', 'guardrail_escalation_required', session.state, {
+          guardrail_failed: true,
+          blocked_state: session.state,
           command: guardrail.escalation?.command,
           topErrors: guardrail.escalation?.topErrors,
           affectedFiles: guardrail.escalation?.affectedFiles,
@@ -804,10 +1422,17 @@ export class PipelineOrchestrator {
           suggestedActions: guardrail.escalation?.suggestedActions
         }, session.confidenceProfileId, session.decisionGate);
 
+        this.emit(requestId, 'gate', 'transition_applied', session.state, {
+          from: blockedTransition.from,
+          to: blockedTransition.to,
+          action: 'guardrail_failed'
+        });
+
         return {
           ok: false,
           requestId,
-          from: session.state,
+          from: blockedTransition.from,
+          to: blockedTransition.to,
           errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
           report,
           guardrail,
@@ -827,6 +1452,8 @@ export class PipelineOrchestrator {
 
       session.state = transition.to;
       session.pendingGuardrailEscalation = undefined;
+      session.pendingGuardrailSource = undefined;
+      session.pendingExecutionRunRequest = undefined;
       session.updatedAt = this.now().toISOString();
 
       this.emit(requestId, 'gate', 'transition_applied', session.state, {
@@ -864,6 +1491,152 @@ export class PipelineOrchestrator {
         errorCode: 'WRITE_EXECUTION_FAILED'
       };
     }
+  }
+
+  async executeScopedRun(
+    requestId: string,
+    options: ExecuteScopedRunOptions = {}
+  ): Promise<ExecutionRunResult> {
+    const session = this.sessions.get(requestId);
+    if (!session) {
+      return {
+        ok: false,
+        requestId,
+        from: 'initialized',
+        errorCode: 'UNKNOWN_REQUEST'
+      };
+    }
+
+    if (session.state !== 'completed') {
+      return {
+        ok: false,
+        requestId,
+        from: session.state,
+        errorCode: 'ILLEGAL_TRANSITION'
+      };
+    }
+
+    const runRequest = createScopedRunRequest({
+      requestId,
+      scopeMode: options.scopeMode,
+      generatedTargets: options.generatedTargets,
+      updatedTargets: options.updatedTargets,
+      generatedOrUpdatedTargets: options.generatedOrUpdatedTargets ?? session.lastGeneratedOrUpdatedTargets
+    });
+
+    this.emit(requestId, 'orchestrator', 'execution_run_requested', session.state, {
+      scopeMode: runRequest.scopeMode,
+      targetSource: runRequest.targetSource,
+      targetCount: runRequest.targets.length,
+      full_suite_opt_in: runRequest.scopeMode === 'full_suite_opt_in'
+    }, session.confidenceProfileId, session.decisionGate);
+
+    const runExecutor = async () => runScopedExecution(runRequest, {
+      commandRunner: options.commandRunner,
+      now: this.now,
+      emitEvent: (event) => this.eventSink.emit(event)
+    });
+
+    const initialRun = await runExecutor();
+    let lastRun = initialRun;
+    let runSummary = buildExecutionSummaryFromRun(requestId, initialRun);
+    let failureDiagnostics = toFailureDiagnostics(runSummary);
+    const initialGuardrailResult = toExecutionGuardrailResult(initialRun);
+
+    const guardrail = await resolveLintTypeRetryEscalation({
+      requestId,
+      initialGuardrailResult,
+      targetFiles: runRequest.targets,
+      maxAttempts: 1, // one-shot retry boundary for execution remediation.
+      applyScopedAutoFix: options.applyScopedAutoFix ?? (async (targetFiles) => ({
+        ok: false,
+        summary: `No scoped auto-fix configured for ${targetFiles.length} generated|updated targets.`
+      })),
+      rerunGuardrail: async () => {
+        this.emit(requestId, 'orchestrator', 'execution_run_retry_attempted', session.state, {
+          scopeMode: runRequest.scopeMode,
+          targetCount: runRequest.targets.length
+        }, session.confidenceProfileId, session.decisionGate);
+        lastRun = await runExecutor();
+        runSummary = buildExecutionSummaryFromRun(requestId, lastRun);
+        failureDiagnostics = toFailureDiagnostics(runSummary);
+        return toExecutionGuardrailResult(lastRun);
+      }
+    });
+
+    if (guardrail.status === 'escalated') {
+      const blockedTransition = transitionState(session.state, 'awaiting_guardrail_decision');
+      if (!blockedTransition.ok) {
+        return {
+          ok: false,
+          requestId,
+          from: session.state,
+          errorCode: blockedTransition.errorCode,
+          run: lastRun,
+          runSummary,
+          failureDiagnostics
+        };
+      }
+
+      session.state = blockedTransition.to;
+      session.pendingGuardrailEscalation = guardrail.escalation;
+      session.pendingGuardrailSource = 'execution';
+      session.pendingExecutionRunRequest = {
+        requestId: runRequest.requestId,
+        scopeMode: runRequest.scopeMode,
+        targetSource: runRequest.targetSource,
+        targets: [...runRequest.targets]
+      };
+      session.updatedAt = this.now().toISOString();
+
+      this.emit(requestId, 'orchestrator', 'execution_run_escalated', session.state, {
+        guardrail_failed: true,
+        blocked_state: session.state,
+        command: guardrail.escalation?.command,
+        topErrors: guardrail.escalation?.topErrors,
+        affectedFiles: guardrail.escalation?.affectedFiles,
+        attemptedFixSummary: guardrail.escalation?.attemptedFixSummary,
+        suggestedActions: guardrail.escalation?.suggestedActions,
+        runSummary: runSummary.summary,
+        failureDiagnostics
+      }, session.confidenceProfileId, session.decisionGate);
+
+      return {
+        ok: false,
+        requestId,
+        from: blockedTransition.from,
+        to: blockedTransition.to,
+        errorCode: 'GUARDRAIL_ESCALATION_REQUIRED',
+        run: lastRun,
+        runSummary,
+        failureDiagnostics,
+        guardrail,
+        escalation: guardrail.escalation
+      };
+    }
+
+    session.pendingGuardrailEscalation = undefined;
+    session.pendingGuardrailSource = undefined;
+    session.pendingExecutionRunRequest = undefined;
+
+    this.emit(requestId, 'orchestrator', 'execution_run_succeeded', session.state, {
+      scopeMode: lastRun.scopeMode,
+      targetCount: lastRun.targets.length,
+      retryAttempts: guardrail.retry.attempts,
+      runSummary: runSummary.summary,
+      failureDiagnostics
+    }, session.confidenceProfileId, session.decisionGate);
+
+    return {
+      ok: true,
+      requestId,
+      from: session.state,
+      to: session.state,
+      run: lastRun,
+      runSummary,
+      failureDiagnostics,
+      guardrail
+    };
   }
 
   private evaluatePreStageGuard(stage: SkillGateStage): StageEntryDecision {
@@ -1110,6 +1883,7 @@ export class PipelineOrchestrator {
       excludedCount: scope.excludedCount,
       regenerationScenarioIds: regeneration.regenerationScenarioIds,
       impactedRequirementIds: regeneration.impactedRequirementIds,
+      globalComments: session.globalComments.map((comment) => ({ ...comment })),
       records: Object.fromEntries(records.map((record) => [record.scenarioId, cloneScenarioRecord(record)]))
     };
   }
@@ -1121,8 +1895,14 @@ export class PipelineOrchestrator {
     state?: PipelineState,
     details?: Record<string, unknown>,
     confidenceProfileId?: string,
-    decisionGate?: ConfidenceGate
+    decisionGate?: ConfidenceGate,
+    interactionType?: PipelineInteractionType,
+    decisionAction?: PipelineDecisionAction,
+    decisionComment?: string
   ): void {
+    const sanitizedDetails = details
+      ? (redactSensitiveValue(details) as Record<string, unknown>)
+      : undefined;
     const event = createPipelineEvent(
       {
         requestId,
@@ -1131,7 +1911,10 @@ export class PipelineOrchestrator {
         state,
         confidenceProfileId,
         decisionGate,
-        details
+        interactionType,
+        decisionAction,
+        decisionComment: decisionComment ? redactSensitiveText(decisionComment) : undefined,
+        details: sanitizedDetails
       },
       this.now
     );

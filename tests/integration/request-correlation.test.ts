@@ -1,6 +1,10 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { InMemoryEventSink } from '../../src/adapters/eventSink';
+import { createDefaultEventSink, InMemoryEventSink } from '../../src/adapters/eventSink';
 import { handlePlanCommand, handlePreviewApproveAll } from '../../src/participant/handler';
 import { PipelineOrchestrator } from '../../src/pipeline/orchestrator';
 
@@ -76,13 +80,51 @@ describe('request correlation across orchestrator events', () => {
     });
 
     const first = orchestrator.handleQuickAction(response.requestId, 'continue');
-    expect(first.ok).toBe(true);
+    expect(first.ok).toBe(false);
+    expect(first.errorCode).toBe('UNMAPPED_ACTION');
 
     const result = orchestrator.handleQuickAction(response.requestId, 'approve');
     const session = orchestrator.getSession(response.requestId);
 
-    expect(result.ok).toBe(false);
-    expect(result.errorCode).toBe('UNMAPPED_ACTION');
+    expect(result.ok).toBe(true);
     expect(session?.state).toBe('plan_approved');
+  });
+
+  it('uses dual sink by default and persists participant + orchestrator events', () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pwagent-correlation-'));
+    try {
+      const now = () => new Date('2026-06-01T11:00:00.000Z');
+      const sink = createDefaultEventSink({
+        rootDir,
+        now
+      });
+      const orchestrator = new PipelineOrchestrator({
+        eventSink: sink,
+        now
+      });
+
+      const response = handlePlanCommand('/plan QA-99 add profile checks', {
+        orchestrator,
+        requestIdFactory: () => 'req_corr_dual_1',
+        now
+      });
+
+      expect(response.requestId).toBe('req_corr_dual_1');
+      expect(sink.getEvents().length).toBeGreaterThan(0);
+
+      const auditFilePath = path.join(rootDir, '.planning', 'logs', 'audit', 'req_corr_dual_1.ndjson');
+      expect(fs.existsSync(auditFilePath)).toBe(true);
+
+      const persistedRecords = fs.readFileSync(auditFilePath, 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as { action: string });
+      const persistedActions = persistedRecords.map((record) => record.action);
+
+      expect(persistedActions).toContain('command_received');
+      expect(persistedActions).toContain('confidence_decision_recorded');
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
   });
 });

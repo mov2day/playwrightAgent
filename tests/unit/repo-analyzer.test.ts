@@ -1,8 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { analyzeRepositoryContext } from '../../src/pipeline/repoAnalysis/repoAnalyzer';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import {
+  __clearRepoAnalysisCacheForTests,
+  analyzeRepositoryContext
+} from '../../src/pipeline/repoAnalysis/repoAnalyzer';
 import type { RepoScanSnapshot } from '../../src/pipeline/repoAnalysis/contracts';
 import { detectFrameworkFinding } from '../../src/pipeline/repoAnalysis/detectors/frameworkDetector';
+
+const TEMP_DIRS: string[] = [];
 
 function createSnapshot(partial: Partial<RepoScanSnapshot>): RepoScanSnapshot {
   return {
@@ -11,6 +20,20 @@ function createSnapshot(partial: Partial<RepoScanSnapshot>): RepoScanSnapshot {
     packageJson: partial.packageJson
   };
 }
+
+function makeTempRepo(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pwagent-repo-analysis-'));
+  TEMP_DIRS.push(dir);
+  return dir;
+}
+
+afterEach(() => {
+  __clearRepoAnalysisCacheForTests();
+  for (const dir of TEMP_DIRS) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  TEMP_DIRS.length = 0;
+});
 
 describe('repo analyzer', () => {
   it('detects hybrid pattern signals and returns multi-label summary', () => {
@@ -86,5 +109,26 @@ describe('repo analyzer', () => {
     );
 
     expect(finding.category).toBe('framework');
+  });
+
+  it('reuses cached repo analysis until explicit refresh is requested', () => {
+    const rootDir = makeTempRepo();
+    fs.writeFileSync(path.join(rootDir, 'README.md'), '# plain repo\n', 'utf8');
+
+    const first = analyzeRepositoryContext({ rootDir });
+    expect(first.summary.framework).toBe('unknown');
+
+    fs.writeFileSync(path.join(rootDir, 'package.json'), JSON.stringify({
+      devDependencies: {
+        playwright: '^1.57.0'
+      }
+    }, null, 2), 'utf8');
+
+    const cached = analyzeRepositoryContext({ rootDir });
+    expect(cached.summary.framework).toBe('unknown');
+
+    const refreshed = analyzeRepositoryContext({ rootDir, refresh: true });
+    expect(refreshed.summary.framework).toContain('playwright');
+    expect(refreshed.summary.framework).not.toBe(first.summary.framework);
   });
 });

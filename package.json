@@ -1,9 +1,38 @@
 {
   "name": "playwrightagent-extension-foundation",
+  "displayName": "PlaywrightAgent",
   "version": "0.1.0",
   "private": true,
   "description": "Phase 1 foundation for PlaywrightAgent VS Code participant",
+  "publisher": "playwrightagent",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onChatParticipant:playwrightagent-extension-foundation.playwrightagent"
+  ],
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "playwrightagent-extension-foundation.playwrightagent",
+        "name": "PlaywrightAgent",
+        "fullName": "PlaywrightAgent",
+        "description": "Generate enterprise-grade Playwright tests",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "plan",
+            "description": "Generate Playwright plan from Jira ticket or manual context"
+          }
+        ]
+      }
+    ]
+  },
   "scripts": {
+    "compile": "tsc -p ./tsconfig.build.json",
+    "package": "npm run compile && npx @vscode/vsce package --allow-missing-repository --no-rewrite-relative-links --skip-license",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

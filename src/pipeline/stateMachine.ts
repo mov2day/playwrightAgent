@@ -7,6 +7,7 @@ export type PipelineState =
   | 'awaiting_script_approval'
   | 'script_approved'
   | 'script_rejected'
+  | 'awaiting_guardrail_decision'
   | 'ready_to_write'
   | 'completed'
   | 'cancelled';
@@ -27,8 +28,9 @@ export const ALLOWED_TRANSITIONS: Readonly<Record<PipelineState, readonly Pipeli
   awaiting_script_approval: ['script_approved', 'script_rejected', 'cancelled'],
   script_approved: ['ready_to_write', 'cancelled'],
   script_rejected: ['awaiting_script_approval', 'cancelled'],
-  ready_to_write: ['completed', 'cancelled'],
-  completed: [],
+  awaiting_guardrail_decision: ['ready_to_write', 'completed', 'cancelled'],
+  ready_to_write: ['awaiting_guardrail_decision', 'completed', 'cancelled'],
+  completed: ['awaiting_guardrail_decision'],
   cancelled: []
 };
 

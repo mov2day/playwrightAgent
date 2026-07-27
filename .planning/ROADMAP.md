@@ -100,8 +100,8 @@ Plans:
 
 Plans:
 - [x] 05-01: Scoped run executor and report summarizer
-- [ ] 05-02: One-shot repair loop with escalation controls
-- [ ] 05-03: Structured AI interaction audit log pipeline
+- [x] 05-02: One-shot repair loop with escalation controls
+- [x] 05-03: Structured AI interaction audit log pipeline
 
 ### Phase 6: Stabilization and v1 Readiness
 **Goal**: Validate v1 end-to-end quality, secure defaults, and release readiness docs.
