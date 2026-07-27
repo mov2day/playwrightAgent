@@ -25,7 +25,7 @@ jobs:
           node-version: 22
 
       - name: Analyze tests and enforce PR policy
-        uses: mov2day/assertiq@v0
+        uses: mov2day/assertiq@v0.1.5
         with:
           fail-below: C
           fail-on-new: high
